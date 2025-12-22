@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_id">transaction_monitoring</string>
+    <string name="notification_channel_name">Transaction Monitoring</string>
+    <string name="notification_channel_description">Shows when the app is monitoring for transactions</string>
+</resources>
