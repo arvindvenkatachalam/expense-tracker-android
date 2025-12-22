@@ -22,8 +22,10 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant execute permission and fix line endings for gradlew
+      - name: Download and fix Gradle Wrapper
         run: |
+          mkdir -p gradle/wrapper
+          curl -L https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
           sed -i 's/\r$//' gradlew
           chmod +x gradlew
 
@@ -35,6 +37,3 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Create Release APK
-        run: ./gradlew assembleRelease
