@@ -6,6 +6,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -32,6 +34,7 @@ fun RuleEditorDialog(
     var testMerchant by remember { mutableStateOf("") }
     var testResult by remember { mutableStateOf<Boolean?>(null) }
     var isTesting by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
     
     var showCategoryDropdown by remember { mutableStateOf(false) }
     var showMatchTypeDropdown by remember { mutableStateOf(false) }
@@ -160,7 +163,7 @@ fun RuleEditorDialog(
                     onClick = {
                         if (pattern.isNotBlank() && testMerchant.isNotBlank()) {
                             isTesting = true
-                            kotlinx.coroutines.GlobalScope.launch {
+                                                coroutineScope.launch {
                                 testResult = onTestPattern(testMerchant, pattern, selectedMatchType)
                                 isTesting = false
                             }
