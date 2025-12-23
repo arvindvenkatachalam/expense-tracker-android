@@ -113,7 +113,7 @@ fun SettingsScreen(
                 Text(
                     text = "About",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(vertical = 8.dp, top = 16.dp)
+                                      modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                 )
             }
             
@@ -146,3 +146,4 @@ fun SettingsScreen(
         }
     }
 }
+
