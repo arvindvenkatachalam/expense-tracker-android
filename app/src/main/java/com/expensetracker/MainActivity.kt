@@ -123,7 +123,7 @@ fun MainScreen() {
                 NavigationBarItem(
                             icon = {
                                 Icon(
-                                    imageVector = Icons.Default.Settings,
+                                    imageVector = Icons.Filled.Settings,
                                     contentDescription = "Settings"
                                 )
                             },
@@ -186,3 +186,4 @@ fun MainScreen() {
         }
     }
 }
+
