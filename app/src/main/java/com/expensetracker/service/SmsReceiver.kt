@@ -62,9 +62,9 @@ class SmsReceiver : BroadcastReceiver() {
                 continue
             }
             
-            // Only process debit transactions
-            if (parsedTransaction.transactionType != TransactionType.DEBIT) {
-                Log.d(TAG, "Not a debit transaction, ignoring")
+            // Process debit and unknown transactions (unknown might be UPI)
+            if (parsedTransaction.transactionType == TransactionType.CREDIT) {
+                Log.d(TAG, "Credit transaction, ignoring")
                 continue
             }
             
@@ -107,3 +107,4 @@ class SmsReceiver : BroadcastReceiver() {
         }
     }
 }
+
