@@ -22,7 +22,7 @@ class TransactionParser {
         )
         
         private val DEBIT_KEYWORDS = listOf(
-            "debited", "withdrawn", "spent", "paid", "purchase", "debit", "used"
+            "debited", "withdrawn", "spent", "paid", "purchase", "debit", "used", "sent"
         )
         
         private val CREDIT_KEYWORDS = listOf(
@@ -31,7 +31,8 @@ class TransactionParser {
         
         private val MERCHANT_PATTERNS = listOf(
             Pattern.compile("(?:at|to|for|on)\\s+([A-Z][A-Z0-9\\s&-]+?)(?:\\s+on|\\.|,|\\s+avl|\\s+info)", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("(?:merchant|vendor)\\s+([A-Z][A-Z0-9\\s&-]+?)(?:\\.|,|\\s)", Pattern.CASE_INSENSITIVE)
+            Pattern.compile("(?:merchant|vendor)\\s+([A-Z][A-Z0-9\\s&-]+?)(?:\\.|,|\\s)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("To\\s+([A-Z][A-Z\\s]+?)(?:\\s+On|\\n|$)", Pattern.CASE_INSENSITIVE)  // UPI "To NAME" pattern
         )
         
         private val ACCOUNT_PATTERN = Pattern.compile("(?:A/c|account|card)\\s*(?:no\\.?)?\\s*(?:XX|\\*\\*|ending)?\\s*(\\d{4})", Pattern.CASE_INSENSITIVE)
@@ -155,3 +156,4 @@ class TransactionParser {
         }
     }
 }
+
