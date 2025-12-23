@@ -120,7 +120,7 @@ fun MainScreen() {
                 NavigationBarItem(
                             icon = {
                                 Icon(
-                                    imageVector = Icons.Filled.Settings,
+                                    imageVector = Icons.Filled.MoreVert,  // Use three-dot menu icon
                                     contentDescription = "Settings"
                                 )
                             },
