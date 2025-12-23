@@ -120,25 +120,25 @@ fun MainScreen() {
                             }
                         )
                     }
-                NavigationBarItem(
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Filled.Settings,
-                                    contentDescription = "Settings"
-                                )
-                            },
-                            label = { Text("Settings") },
-                            selected = currentDestination?.hierarchy?.any { it.route == Screen.Settings.route } == true,
-                            onClick = {
-                                navController.navigate(Screen.Settings.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
+                    NavigationBarItem(
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Settings"
+                            )
+                        },
+                        label = { Text("Settings") },
+                        selected = currentDestination?.hierarchy?.any { it.route == Screen.Settings.route } == true,
+                        onClick = {
+                            navController.navigate(Screen.Settings.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
                                 }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                        )
+                        }
+                    )
                 }
             }
         }
@@ -186,4 +186,3 @@ fun MainScreen() {
         }
     }
 }
-
