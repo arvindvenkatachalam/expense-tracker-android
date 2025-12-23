@@ -31,11 +31,11 @@ sealed class Screen(val route: String, val title: String) {
     object Dashboard : Screen("dashboard", "Dashboard")
     object Rules : Screen("rules", "Rules")
     object Settings : Screen("settings", "Settings")
+    object ManageRules : Screen("manage_rules", "Manage Rules")
 }
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -44,32 +44,28 @@ class MainActivity : ComponentActivity() {
             startMonitoringService()
         }
     }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
         requestPermissions()
-        
         setContent {
             ExpenseTrackerTheme {
                 MainScreen()
             }
         }
     }
-    
+
     private fun requestPermissions() {
         val permissions = mutableListOf(
             Manifest.permission.READ_SMS,
             Manifest.permission.RECEIVE_SMS
         )
-        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        
         permissionLauncher.launch(permissions.toTypedArray())
     }
-    
+
     private fun startMonitoringService() {
         val intent = Intent(this, TransactionService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -86,12 +82,12 @@ fun MainScreen() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    
+
     val bottomNavItems = listOf(
         Screen.Dashboard,
         Screen.Rules
     )
-    
+
     Scaffold(
         bottomBar = {
             if (currentDestination?.route in bottomNavItems.map { it.route }) {
@@ -121,6 +117,25 @@ fun MainScreen() {
                             }
                         )
                     }
+                NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    imageVector = androidx.compose.material.icons.filled.Settings,
+                                    contentDescription = "Settings"
+                                )
+                            },
+                            label = { Text("Settings") },
+                            selected = currentDestination?.hierarchy?.any { it.route == Screen.Settings.route } == true,
+                            onClick = {
+                                navController.navigate(Screen.Settings.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        )
                 }
             }
         }
@@ -140,16 +155,20 @@ fun MainScreen() {
                     }
                 )
             }
-            
             composable(Screen.Rules.route) {
                 RulesScreen()
             }
-            
             composable(Screen.Settings.route) {
                 SettingsScreen(
-                    onBackClick = {
-                        navController.popBackStack()
+                    onBackClick = { navController.popBackStack() },
+                    onManageRulesClick = {
+                        navController.navigate(Screen.ManageRules.route)
                     }
+                )
+            }
+            composable(Screen.ManageRules.route) {
+                com.expensetracker.presentation.settings.RulesScreen(
+                    onBackClick = { navController.popBackStack() }
                 )
             }
         }
