@@ -28,7 +28,8 @@ import com.expensetracker.util.TimePeriod
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
     onCategoryClick: (Long) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onAnalysisClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
@@ -76,11 +77,20 @@ fun DashboardScreen(
                 
                 // Category Breakdown
                 item {
-                    Text(
-                        text = "Expenses by Category",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Expenses by Category",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        TextButton(onClick = onAnalysisClick) {
+                            Text("View Details →")
+                        }
+                    }
                 }
                 
                 if (uiState.categoryExpenses.isEmpty()) {
