@@ -41,8 +41,7 @@ fun RecategorizeConfirmationDialog(
               dismissButton = {
                             TextButton(onClick = onDismiss) {
                                               Text("Cancel")
-                            }
-
+                            }}
                                         )
               }
               
