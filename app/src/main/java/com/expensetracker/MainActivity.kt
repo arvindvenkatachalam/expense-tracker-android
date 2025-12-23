@@ -22,6 +22,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.expensetracker.presentation.dashboard.DashboardScreen
+import com.expensetracker.presentation.analysis.CategoryAnalysisScreen
 import com.expensetracker.presentation.rules.RulesScreen
 import com.expensetracker.presentation.settings.SettingsScreen
 import com.expensetracker.presentation.theme.ExpenseTrackerTheme
@@ -33,6 +34,7 @@ sealed class Screen(val route: String, val title: String) {
     object Rules : Screen("rules", "Rules")
     object Settings : Screen("settings", "Settings")
     object ManageRules : Screen("manage_rules", "Manage Rules")
+    object Analysis : Screen("analysis", "Category Analysis")
 }
 
 @AndroidEntryPoint
@@ -121,7 +123,7 @@ fun MainScreen() {
                 NavigationBarItem(
                             icon = {
                                 Icon(
-                                    imageVector = Icons.Filled.Settings,  // Use three-dot menu icon
+                                    imageVector = Icons.Default.Settings,
                                     contentDescription = "Settings"
                                 )
                             },
@@ -153,6 +155,9 @@ fun MainScreen() {
                     },
                     onSettingsClick = {
                         navController.navigate(Screen.Settings.route)
+                    },
+                    onAnalysisClick = {
+                        navController.navigate(Screen.Analysis.route)
                     }
                 )
             }
@@ -172,8 +177,12 @@ fun MainScreen() {
                     onBackClick = { navController.popBackStack() }
                 )
             }
+            
+            composable(Screen.Analysis.route) {
+                CategoryAnalysisScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
     }
 }
-
-
