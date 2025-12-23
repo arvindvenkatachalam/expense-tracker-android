@@ -108,7 +108,13 @@ fun DashboardScreen(
                     }
                     
                     items(uiState.recentTransactions) { transaction ->
-                        TransactionItem(transaction = transaction)
+                        val category = uiState.categoryExpenses
+                            .find { it.category.id == transaction.categoryId }
+                            ?.category
+                        TransactionItem(
+                            transaction = transaction,
+                            category = category
+                        )
                     }
                 }
             }
@@ -238,7 +244,10 @@ fun CategoryExpenseItem(
 }
 
 @Composable
-fun TransactionItem(transaction: com.expensetracker.data.local.entity.Transaction) {
+fun TransactionItem(
+    transaction: com.expensetracker.data.local.entity.Transaction,
+    category: com.expensetracker.data.local.entity.Category? = null
+) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -248,6 +257,23 @@ fun TransactionItem(transaction: com.expensetracker.data.local.entity.Transactio
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Category Icon
+            if (category != null) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(getCategoryColor(category.color).copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = category.icon,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+            
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = transaction.merchant,
@@ -297,4 +323,3 @@ fun EmptyStateCard() {
         }
     }
 }
-
