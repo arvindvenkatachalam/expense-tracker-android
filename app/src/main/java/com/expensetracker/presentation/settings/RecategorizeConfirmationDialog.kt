@@ -46,19 +46,3 @@ fun RecategorizeConfirmationDialog(
                                         )
               }
               
-                    append("New Category: ${newCategory.name}")
-                }
-            )
-        },
-        confirmButton = {
-            Button(onClick = onConfirm) {
-                Text("Update All")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
