@@ -32,6 +32,8 @@ fun RulesScreen(
     var showDeleteConfirmation by remember { mutableStateOf<Rule?>(null) }
     var showRecategorizeDialog by remember { mutableStateOf(false) }
     var pendingRuleUpdate by remember { mutableStateOf<Pair<Rule, Rule>?>(null) }
+    var showRecategorizeDialogForNewRule by remember { mutableStateOf(false) }
+    var pendingNewRule by remember { mutableStateOf<Rule?>(null) }
     var affectedTransactionCount by remember { mutableIntStateOf(0) }
     
     val scope = rememberCoroutineScope()
@@ -147,7 +149,16 @@ fun RulesScreen(
                     } else if (editingRule != null) {
                         viewModel.updateRule(newRule, editingRule)
                     } else {
-                        viewModel.addRule(newRule)
+                        // Adding new rule - check for matching transactions
+                        val count = viewModel.countMatchingTransactions(newRule.pattern, newRule.matchType)
+                        if (count > 0) {
+                            affectedTransactionCount = count
+                            pendingNewRule = newRule
+                            showRecategorizeDialogForNewRule = true
+                        } else {
+                            viewModel.addRule(newRule)
+                            snackbarHostState.showSnackbar("✓ Rule added")
+                        }
                     }
                     showEditorDialog = false
                     editingRule = null
@@ -188,6 +199,40 @@ fun RulesScreen(
                 onDismiss = {
                     showRecategorizeDialog = false
                     pendingRuleUpdate = null
+                }
+            )
+        }
+    }
+    
+    // Recategorize Dialog for New Rules
+    if (showRecategorizeDialogForNewRule && pendingNewRule != null) {
+        val newRule = pendingNewRule!!
+        val newCategory = categories.find { it.id == newRule.categoryId }
+        val othersCategory = categories.find { it.name == "Others" }
+        
+        if (newCategory != null && othersCategory != null) {
+            RecategorizeConfirmationDialog(
+                pattern = newRule.pattern,
+                oldCategory = othersCategory,
+                newCategory = newCategory,
+                affectedCount = affectedTransactionCount,
+                onConfirm = {
+                    scope.launch {
+                        viewModel.addRule(newRule, recategorize = true)
+                        showRecategorizeDialogForNewRule = false
+                        pendingNewRule = null
+                        snackbarHostState.showSnackbar(
+                            "✓ Rule added. $affectedTransactionCount transaction${if (affectedTransactionCount != 1) "s" else ""} recategorized."
+                        )
+                    }
+                },
+                onDismiss = {
+                    scope.launch {
+                        viewModel.addRule(newRule, recategorize = false)
+                        showRecategorizeDialogForNewRule = false
+                        pendingNewRule = null
+                        snackbarHostState.showSnackbar("✓ Rule added (past transactions not affected)")
+                    }
                 }
             )
         }
