@@ -36,10 +36,15 @@ class RulesViewModel @Inject constructor(
     val categories: StateFlow<List<Category>> = categoryDao.getAllCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     
-    fun addRule(rule: Rule) = viewModelScope.launch {
+    fun addRule(rule: Rule, recategorize: Boolean = false) = viewModelScope.launch {
         try {
             val id = ruleDao.insertRule(rule)
             Log.d(TAG, "Rule added with ID: $id")
+            
+            // Recategorize matching transactions if requested
+            if (recategorize) {
+                recategorizeMatchingTransactions(rule)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error adding rule", e)
         }
