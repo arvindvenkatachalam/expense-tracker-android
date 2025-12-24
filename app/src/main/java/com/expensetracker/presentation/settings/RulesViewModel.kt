@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 @HiltViewModel
@@ -84,7 +85,17 @@ class RulesViewModel @Inject constructor(
     
     suspend fun countMatchingTransactions(pattern: String, matchType: MatchType): Int {
         return try {
-            val allTransactions = transactionDao.getAllTransactions().first()
+            Log.d(TAG, "Starting countMatchingTransactions for pattern: $pattern, matchType: $matchType")
+            
+            val allTransactions = withTimeoutOrNull(5000) {
+                transactionDao.getAllTransactions().first()
+            }
+            
+            if (allTransactions == null) {
+                Log.e(TAG, "Timeout waiting for transactions from database")
+                return 0
+            }
+            
             Log.d(TAG, "Total transactions in database: ${allTransactions.size}")
             allTransactions.forEachIndexed { index, tx ->
                 Log.d(TAG, "Transaction $index: merchant='${tx.merchant}', category=${tx.categoryId}")
@@ -100,6 +111,7 @@ class RulesViewModel @Inject constructor(
             matchingCount
         } catch (e: Exception) {
             Log.e(TAG, "Error counting matching transactions", e)
+            e.printStackTrace()
             0
         }
     }
