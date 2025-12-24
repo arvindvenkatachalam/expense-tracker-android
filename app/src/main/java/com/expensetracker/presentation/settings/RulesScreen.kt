@@ -137,6 +137,13 @@ fun RulesScreen(
             rule = editingRule,
             categories = categories,
             onSave = { newRule ->
+                // DEBUG: Verify onSave is called
+                android.widget.Toast.makeText(
+                    context,
+                    "onSave called! editingRule=${if (editingRule != null) "NOT NULL" else "NULL"}",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                
                 scope.launch {
                     if (editingRule != null && editingRule!!.categoryId != newRule.categoryId) {
                         // Category changed - check if we need to recategorize
