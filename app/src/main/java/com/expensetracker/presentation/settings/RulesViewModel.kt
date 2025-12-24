@@ -84,54 +84,87 @@ class RulesViewModel @Inject constructor(
     }
     
     suspend fun countMatchingTransactions(pattern: String, matchType: MatchType): Int {
-        return try {
-            Log.d(TAG, "Starting countMatchingTransactions for pattern: $pattern, matchType: $matchType")
-            
-            // Use direct database query instead of Flow
-            val allTransactions = transactionDao.getAllTransactionsDirect()
-            
-            Log.d(TAG, "Total transactions in database: ${allTransactions.size}")
-            allTransactions.forEachIndexed { index, tx ->
-                Log.d(TAG, "Transaction $index: merchant='${tx.merchant}', category=${tx.categoryId}")
-            }
-            
-            val matchingCount = allTransactions.count { transaction ->
-                val matches = categorizationEngine.testRule(transaction.merchant, pattern, matchType)
-                Log.d(TAG, "Testing '${transaction.merchant}' against pattern '$pattern' ($matchType): $matches")
-                matches
-            }
-            
-            Log.d(TAG, "Found $matchingCount matching transactions for pattern '$pattern' ($matchType)")
-            matchingCount
-        } catch (e: Exception) {
-            Log.e(TAG, "Error counting matching transactions", e)
-            e.printStackTrace()
-            0
+    return try {
+        Log.d(TAG, "=== COUNT MATCHING TRANSACTIONS START ===")
+        Log.d(TAG, "Pattern: '$pattern' (length: ${pattern.length})")
+        Log.d(TAG, "MatchType: $matchType")
+        
+        // First, let's verify the method is being called
+        val allTransactions = transactionDao.getAllTransactionsDirect()
+        
+        Log.d(TAG, "Retrieved ${allTransactions.size} transactions from database")
+        
+        if (allTransactions.isEmpty()) {
+            Log.e(TAG, "ERROR: No transactions found in database!")
+            return 0
         }
+        
+        // Log ALL transactions with their merchants
+        allTransactions.forEachIndexed { index, tx ->
+            Log.d(TAG, "TX[$index]: merchant='${tx.merchant}' | categoryId=${tx.categoryId} | id=${tx.id}")
+        }
+        
+        // Now test each transaction
+        var matchCount = 0
+        allTransactions.forEach { transaction ->
+            val matches = categorizationEngine.testRule(transaction.merchant, pattern, matchType)
+            
+            if (matches) {
+                matchCount++
+                Log.d(TAG, "✓✓✓ MATCH FOUND: '${transaction.merchant}' matches '$pattern' ($matchType)")
+            } else {
+                Log.d(TAG, "✗ No match: '${transaction.merchant}' vs '$pattern' ($matchType)")
+            }
+        }
+        
+        Log.d(TAG, "FINAL COUNT: $matchCount matching transactions found")
+        Log.d(TAG, "=== COUNT MATCHING TRANSACTIONS END ===")
+        
+        matchCount
+    } catch (e: Exception) {
+        Log.e(TAG, "ERROR in countMatchingTransactions: ${e.message}", e)
+        e.printStackTrace()
+        0
     }
+}
     
     private suspend fun recategorizeMatchingTransactions(rule: Rule) {
-        try {
-            // Get all transactions using direct query
-            val allTransactions = transactionDao.getAllTransactionsDirect()
-            
-            // Find transactions that match this rule's pattern
-            val matchingTransactions = allTransactions.filter { transaction ->
-                categorizationEngine.testRule(transaction.merchant, rule.pattern, rule.matchType)
+    try {
+        Log.d(TAG, "=== RECATEGORIZE MATCHING TRANSACTIONS START ===")
+        Log.d(TAG, "Rule pattern: '${rule.pattern}', matchType: ${rule.matchType}, targetCategory: ${rule.categoryId}")
+        
+        // Get all transactions using direct query
+        val allTransactions = transactionDao.getAllTransactionsDirect()
+        Log.d(TAG, "Retrieved ${allTransactions.size} total transactions")
+        
+        // Find transactions that match this rule's pattern
+        val matchingTransactions = allTransactions.filter { transaction ->
+            val matches = categorizationEngine.testRule(transaction.merchant, rule.pattern, rule.matchType)
+            if (matches) {
+                Log.d(TAG, "Found matching transaction: id=${transaction.id}, merchant='${transaction.merchant}', currentCategory=${transaction.categoryId}")
             }
-            
-            // Update category for matching transactions
-            matchingTransactions.forEach { transaction ->
-                val updated = transaction.copy(
-                    categoryId = rule.categoryId,
-                    isManuallyEdited = false  // Reset manual edit flag
-                )
-                transactionDao.updateTransaction(updated)
-            }
-            
-            Log.d(TAG, "Recategorized ${matchingTransactions.size} transactions for rule: ${rule.pattern}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error recategorizing transactions", e)
+            matches
         }
+        
+        Log.d(TAG, "Found ${matchingTransactions.size} transactions to recategorize")
+        
+        // Update category for matching transactions
+        var updateCount = 0
+        matchingTransactions.forEach { transaction ->
+            val updated = transaction.copy(
+                categoryId = rule.categoryId,
+                isManuallyEdited = false  // Reset manual edit flag
+            )
+            transactionDao.updateTransaction(updated)
+            updateCount++
+            Log.d(TAG, "Updated transaction ${transaction.id}: ${transaction.categoryId} -> ${rule.categoryId}")
+        }
+        
+        Log.d(TAG, "Successfully recategorized $updateCount transactions for rule: ${rule.pattern}")
+        Log.d(TAG, "=== RECATEGORIZE MATCHING TRANSACTIONS END ===")
+    } catch (e: Exception) {
+        Log.e(TAG, "Error recategorizing transactions: ${e.message}", e)
+        e.printStackTrace()
+    }
     }
 }
