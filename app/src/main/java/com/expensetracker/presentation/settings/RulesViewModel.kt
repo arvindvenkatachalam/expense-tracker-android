@@ -85,9 +85,19 @@ class RulesViewModel @Inject constructor(
     suspend fun countMatchingTransactions(pattern: String, matchType: MatchType): Int {
         return try {
             val allTransactions = transactionDao.getAllTransactions().first()
-            allTransactions.count { transaction ->
-                categorizationEngine.testRule(transaction.merchant, pattern, matchType)
+            Log.d(TAG, "Total transactions in database: ${allTransactions.size}")
+            allTransactions.forEachIndexed { index, tx ->
+                Log.d(TAG, "Transaction $index: merchant='${tx.merchant}', category=${tx.categoryId}")
             }
+            
+            val matchingCount = allTransactions.count { transaction ->
+                val matches = categorizationEngine.testRule(transaction.merchant, pattern, matchType)
+                Log.d(TAG, "Testing '${transaction.merchant}' against pattern '$pattern' ($matchType): $matches")
+                matches
+            }
+            
+            Log.d(TAG, "Found $matchingCount matching transactions for pattern '$pattern' ($matchType)")
+            matchingCount
         } catch (e: Exception) {
             Log.e(TAG, "Error counting matching transactions", e)
             0
