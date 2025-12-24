@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,6 +39,7 @@ fun RulesScreen(
     
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -153,12 +155,27 @@ fun RulesScreen(
                     } else {
                         // Adding new rule - check for matching transactions
                         val count = viewModel.countMatchingTransactions(newRule.pattern, newRule.matchType)
+                        
+                        // DEBUG: Show count to user
+                        android.widget.Toast.makeText(
+                            context,
+                            "Found $count matching transactions",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                        
                         if (count > 0) {
                             affectedTransactionCount = count
                             pendingNewRule = newRule
                             showRecategorizeDialogForNewRule = true
                             showEditorDialog = false
                             editingRule = null
+                            
+                            // DEBUG: Confirm dialog should show
+                            android.widget.Toast.makeText(
+                                context,
+                                "Dialog should appear now!",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
                         } else {
                             viewModel.addRule(newRule)
                             snackbarHostState.showSnackbar("✓ Rule added")
