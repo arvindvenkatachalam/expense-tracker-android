@@ -148,6 +148,8 @@ fun RulesScreen(
                         }
                     } else if (editingRule != null) {
                         viewModel.updateRule(newRule, editingRule)
+                        showEditorDialog = false
+                        editingRule = null
                     } else {
                         // Adding new rule - check for matching transactions
                         val count = viewModel.countMatchingTransactions(newRule.pattern, newRule.matchType)
@@ -155,13 +157,15 @@ fun RulesScreen(
                             affectedTransactionCount = count
                             pendingNewRule = newRule
                             showRecategorizeDialogForNewRule = true
+                            showEditorDialog = false
+                            editingRule = null
                         } else {
                             viewModel.addRule(newRule)
                             snackbarHostState.showSnackbar("✓ Rule added")
+                            showEditorDialog = false
+                            editingRule = null
                         }
                     }
-                    showEditorDialog = false
-                    editingRule = null
                 }
             },
             onDismiss = {
