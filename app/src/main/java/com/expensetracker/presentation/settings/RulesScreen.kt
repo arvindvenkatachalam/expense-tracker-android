@@ -1,5 +1,6 @@
 package com.expensetracker.presentation.settings
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,6 +26,8 @@ fun RulesScreen(
     onBackClick: () -> Unit,
     viewModel: RulesViewModel = hiltViewModel()
 ) {
+    val TAG = "RulesScreen"
+    
     val rules by viewModel.rules.collectAsState()
     val categories by viewModel.categories.collectAsState()
     
@@ -160,35 +163,35 @@ fun RulesScreen(
                         showEditorDialog = false
                         editingRule = null
                     } else {
+                        Log.d(TAG, "=== BRANCH: Adding NEW rule ===")
+                        Log.d(TAG, "Rule pattern: '${newRule.pattern}', category: ${newRule.categoryId}, matchType: ${newRule.matchType}")
+                        
                         // Adding new rule - check for matching transactions
                         val count = viewModel.countMatchingTransactions(newRule.pattern, newRule.matchType)
                         
-                        // DEBUG: Show count to user
-                        android.widget.Toast.makeText(
-                            context,
-                            "Found $count matching transactions",
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
+                        Log.d(TAG, "Count returned from ViewModel: $count")
                         
                         if (count > 0) {
+                            Log.d(TAG, "Count > 0, setting up recategorization dialog")
                             affectedTransactionCount = count
                             pendingNewRule = newRule
                             showRecategorizeDialogForNewRule = true
                             showEditorDialog = false
                             editingRule = null
                             
-                            // DEBUG: Confirm dialog should show
-                            android.widget.Toast.makeText(
-                                context,
-                                "Dialog should appear now!",
-                                android.widget.Toast.LENGTH_LONG
-                            ).show()
+                            Log.d(TAG, "State after setup:")
+                            Log.d(TAG, "  affectedTransactionCount = $affectedTransactionCount")
+                            Log.d(TAG, "  pendingNewRule = ${pendingNewRule?.pattern}")
+                            Log.d(TAG, "  showRecategorizeDialogForNewRule = $showRecategorizeDialogForNewRule")
+                            Log.d(TAG, "  showEditorDialog = $showEditorDialog")
                         } else {
-                            viewModel.addRule(newRule)
+                            Log.d(TAG, "Count = 0, adding rule directly without recategorization")
+                            viewModel.addRule(newRule, recategorize = false)
                             snackbarHostState.showSnackbar("✓ Rule added")
                             showEditorDialog = false
                             editingRule = null
                         }
+                        Log.d(TAG, "=== END new rule branch ===")
                     }
                 }
             },
@@ -234,11 +237,19 @@ fun RulesScreen(
     
     // Recategorize Dialog for New Rules
     if (showRecategorizeDialogForNewRule && pendingNewRule != null) {
+        Log.d(TAG, "=== RENDERING RecategorizeDialog for NEW rule ===")
         val newRule = pendingNewRule!!
         val newCategory = categories.find { it.id == newRule.categoryId }
         val othersCategory = categories.find { it.name == "Others" }
         
+        Log.d(TAG, "Dialog state:")
+        Log.d(TAG, "  newRule.pattern = '${newRule.pattern}'")
+        Log.d(TAG, "  newCategory = ${newCategory?.name ?: "NULL"}")
+        Log.d(TAG, "  othersCategory = ${othersCategory?.name ?: "NULL"}")
+        Log.d(TAG, "  affectedCount = $affectedTransactionCount")
+        
         if (newCategory != null && othersCategory != null) {
+            Log.d(TAG, "Rendering RecategorizeConfirmationDialog")
             RecategorizeConfirmationDialog(
                 pattern = newRule.pattern,
                 oldCategory = othersCategory,
