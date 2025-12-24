@@ -87,14 +87,8 @@ class RulesViewModel @Inject constructor(
         return try {
             Log.d(TAG, "Starting countMatchingTransactions for pattern: $pattern, matchType: $matchType")
             
-            val allTransactions = withTimeoutOrNull(5000) {
-                transactionDao.getAllTransactions().first()
-            }
-            
-            if (allTransactions == null) {
-                Log.e(TAG, "Timeout waiting for transactions from database")
-                return 0
-            }
+            // Use direct database query instead of Flow
+            val allTransactions = transactionDao.getAllTransactionsDirect()
             
             Log.d(TAG, "Total transactions in database: ${allTransactions.size}")
             allTransactions.forEachIndexed { index, tx ->
@@ -118,8 +112,8 @@ class RulesViewModel @Inject constructor(
     
     private suspend fun recategorizeMatchingTransactions(rule: Rule) {
         try {
-            // Get all transactions
-            val allTransactions = transactionDao.getAllTransactions().first()
+            // Get all transactions using direct query
+            val allTransactions = transactionDao.getAllTransactionsDirect()
             
             // Find transactions that match this rule's pattern
             val matchingTransactions = allTransactions.filter { transaction ->
