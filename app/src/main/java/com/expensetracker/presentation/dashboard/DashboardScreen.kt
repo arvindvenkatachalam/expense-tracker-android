@@ -249,7 +249,7 @@ fun CategoryExpenseItem(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${String.format(\"%.1f\", categoryExpense.percentage)}%",
+                    text = "${String.format("%.1f", categoryExpense.percentage)}%",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -338,3 +338,4 @@ fun EmptyStateCard() {
         }
     }
 }
+
