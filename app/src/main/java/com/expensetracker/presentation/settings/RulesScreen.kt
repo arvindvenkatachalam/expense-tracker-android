@@ -289,7 +289,6 @@ fun RulesScreen(
                 snackbarHostState.showSnackbar("✓ Rule added")
             }
         }
-        }
     }
     
     // Delete Confirmation Dialog
