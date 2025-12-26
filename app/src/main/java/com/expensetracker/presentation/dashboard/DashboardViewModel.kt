@@ -82,4 +82,14 @@ class DashboardViewModel @Inject constructor(
     fun selectPeriod(period: TimePeriod) {
         _selectedPeriod.value = period
     }
+    
+    /**
+     * Force refresh by toggling period to trigger Flow re-emission
+     */
+    fun forceRefresh() {
+        val current = _selectedPeriod.value
+        // Toggle to trigger Flow update
+        _selectedPeriod.value = TimePeriod.TODAY
+        _selectedPeriod.value = current
+    }
 }
