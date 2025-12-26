@@ -284,7 +284,7 @@ private fun TransactionReviewView(
         ) {
             Icon(Icons.Default.CheckCircle, "Import")
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Import $selectedCount Transaction${if (selectedCount != 1) \"s\" else \"\"}")
+            Text("Import $selectedCount Transaction${if (selectedCount != 1) "s" else ""}")
         }
     }
 }
@@ -294,7 +294,7 @@ private fun TransactionItem(
     transaction: PdfTransaction,
     onToggle: () -> Unit
 ) {
-    val dateFormat = SimpleDateFormat(\"dd MMM yyyy\", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     
     Row(
         modifier = Modifier
@@ -335,7 +335,7 @@ private fun TransactionItem(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        \"Possible duplicate\",
+                        "Possible duplicate",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -345,7 +345,7 @@ private fun TransactionItem(
         
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                \"₹%.2f\".format(transaction.amount),
+                "₹%.2f".format(transaction.amount),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
                 color = if (transaction.isDebit) 
