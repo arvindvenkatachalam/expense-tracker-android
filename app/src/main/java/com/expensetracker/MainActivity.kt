@@ -50,8 +50,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        requestPermissions()
+        super.onCreate(savedInstanceState)    requestPermissions()
         setContent {
             ExpenseTrackerTheme {
                 MainScreen()
