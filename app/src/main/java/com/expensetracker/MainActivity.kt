@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState) 
+        super.onCreate(savedInstanceState)
         requestPermissions()
         setContent {
             ExpenseTrackerTheme {
@@ -192,12 +192,11 @@ fun MainScreen() {
                 com.expensetracker.presentation.pdfimport.PdfImportScreen(
                     onBackClick = { navController.popBackStack() },
                     onImportSuccess = { 
-                        navController.popBackStack()
-                        navController.navigate(Screen.Dashboard.route)
+                        // Pop back to Dashboard and ensure it's at the top
+                        navController.popBackStack(Screen.Dashboard.route, inclusive = false)
                     }
                 )
             }
         }
     }
 }
-
