@@ -142,17 +142,17 @@ class PdfImportViewModel @Inject constructor(
             selectedTransactions.forEachIndexed { index, pdfTx ->
                 Log.d(TAG, "Importing transaction $index: ${pdfTx.description}, " +
                     "amount=${pdfTx.amount}, timestamp=${pdfTx.timestamp}, " +
-                    "date=${java.util.Date(pdfTx.timestamp)}, type=${if (pdfTx.isDebit) \"DEBIT\" else \"CREDIT\"}")
+                    "date=${java.util.Date(pdfTx.timestamp)}, type=${if (pdfTx.isDebit) "DEBIT" else "CREDIT"}")
                 
                 val transaction = Transaction(
                     amount = pdfTx.amount,
                     merchant = pdfTx.description,
-                    categoryId = pdfTx.suggestedCategoryId ?: 7L, // Default to \"Others\"
+                    categoryId = pdfTx.suggestedCategoryId ?: 7L, // Default to "Others"
                     timestamp = pdfTx.timestamp,
-                    smsBody = \"Imported from PDF\",
-                    bankName = \"HDFC\",
-                    accountLast4 = \"\",
-                    transactionType = if (pdfTx.isDebit) \"DEBIT\" else \"CREDIT\",
+                    smsBody = "Imported from PDF",
+                    bankName = "HDFC",
+                    accountLast4 = "",
+                    transactionType = if (pdfTx.isDebit) "DEBIT" else "CREDIT",
                     isManuallyEdited = false
                 )
                 
@@ -177,7 +177,7 @@ class PdfImportViewModel @Inject constructor(
                 isLoading = false,
                 importSuccess = true,
                 importedCount = selectedTransactions.size,
-                importMessage = \"Imported ${selectedTransactions.size} transactions. Total in DB: ${allTransactions.size}\"
+                importMessage = "Imported ${selectedTransactions.size} transactions. Total in DB: ${allTransactions.size}"
             )
             
         } catch (e: Exception) {
