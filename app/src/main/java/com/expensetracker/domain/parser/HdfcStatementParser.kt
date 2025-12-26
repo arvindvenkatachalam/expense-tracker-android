@@ -28,10 +28,27 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()),
             SimpleDateFormat("dd MMM yyyy", Locale.getDefault()),
             SimpleDateFormat("dd/MM/yy", Locale.getDefault()).apply {
-                // Set 2-digit year pivot to year 2000
-                // This makes years 00-99 map to 2000-2099
+                // FIXED: Set 2-digit year pivot correctly
+                // Years 00-99 should map to 2000-2099
                 val calendar = Calendar.getInstance()
-                calendar.set(2000, Calendar.JANUARY, 1, 0, 0, 0)
+                calendar.set(Calendar.YEAR, 2000)
+                calendar.set(Calendar.MONTH, Calendar.JANUARY)
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                set2DigitYearStart(calendar.time)
+            },
+            SimpleDateFormat("dd-MM-yy", Locale.getDefault()).apply {
+                // Handle dd-MM-yy format as well
+                val calendar = Calendar.getInstance()
+                calendar.set(Calendar.YEAR, 2000)
+                calendar.set(Calendar.MONTH, Calendar.JANUARY)
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
                 calendar.set(Calendar.MILLISECOND, 0)
                 set2DigitYearStart(calendar.time)
             }
@@ -135,7 +152,21 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             try {
                 val date = format.parse(dateStr)
                 if (date != null) {
-                    val timestamp = date.time
+                    var timestamp = date.time
+                    
+                    // ADDITIONAL FIX: Validate the year is reasonable
+                    val calendar = Calendar.getInstance()
+                    calendar.timeInMillis = timestamp
+                    val year = calendar.get(Calendar.YEAR)
+                    
+                    // If year is less than 1900, it's likely a parsing error
+                    // Add 2000 to the year to fix it
+                    if (year < 1900) {
+                        Log.w(TAG, "Year $year seems incorrect for date '$dateStr', adjusting to ${year + 2000}")
+                        calendar.set(Calendar.YEAR, year + 2000)
+                        timestamp = calendar.timeInMillis
+                    }
+                    
                     Log.d(TAG, "Parsed date '$dateStr' as: ${Date(timestamp)} (timestamp: $timestamp)")
                     return timestamp
                 }
