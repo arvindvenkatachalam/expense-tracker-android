@@ -27,7 +27,13 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()),
             SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()),
             SimpleDateFormat("dd MMM yyyy", Locale.getDefault()),
-            SimpleDateFormat("dd/MM/yy", Locale.getDefault())
+            SimpleDateFormat("dd/MM/yy", Locale.getDefault()).apply {
+                // Set 2-digit year to start from 1950, so "25" becomes 2025, not 0025
+                set2DigitYearStart(Date(0L)) // Jan 1, 1970
+                val calendar = Calendar.getInstance()
+                calendar.set(1950, 0, 1) // Start from year 1950
+                set2DigitYearStart(calendar.time)
+            }
         )
         
         // Regex patterns for transaction parsing
