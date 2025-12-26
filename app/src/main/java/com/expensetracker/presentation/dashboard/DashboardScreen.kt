@@ -33,6 +33,11 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
+    // Force refresh when screen is displayed (helps after PDF import)
+    LaunchedEffect(Unit) {
+        viewModel.forceRefresh()
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -244,7 +249,7 @@ fun CategoryExpenseItem(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${String.format("%.1f", categoryExpense.percentage)}%",
+                    text = "${String.format(\"%.1f\", categoryExpense.percentage)}%",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
