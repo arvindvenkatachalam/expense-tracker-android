@@ -240,7 +240,12 @@ fun RulesScreen(
         Log.d(TAG, "=== RENDERING RecategorizeDialog for NEW rule ===")
         val newRule = pendingNewRule!!
         val newCategory = categories.find { it.id == newRule.categoryId }
-        val othersCategory = categories.find { it.name == "Others" }
+        
+        // Try to find "Others" category, but use a fallback if it doesn't exist
+        val othersCategory = categories.find { it.name.equals("Others", ignoreCase = true) }
+            ?: categories.find { it.name.equals("Other", ignoreCase = true) }
+            ?: categories.firstOrNull { it.id == 7L } // Default category ID
+            ?: categories.firstOrNull() // Absolute fallback
         
         Log.d(TAG, "Dialog state:")
         Log.d(TAG, "  newRule.pattern = '${newRule.pattern}'")
@@ -274,6 +279,16 @@ fun RulesScreen(
                     }
                 }
             )
+        } else {
+            Log.e(TAG, "ERROR: Cannot render dialog - newCategory or othersCategory is null!")
+            // Fallback: just add the rule without dialog
+            scope.launch {
+                viewModel.addRule(newRule, recategorize = false)
+                showRecategorizeDialogForNewRule = false
+                pendingNewRule = null
+                snackbarHostState.showSnackbar("✓ Rule added")
+            }
+        }
         }
     }
     
