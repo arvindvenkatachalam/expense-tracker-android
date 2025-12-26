@@ -35,6 +35,7 @@ sealed class Screen(val route: String, val title: String) {
     object Settings : Screen("settings", "Settings")
     object ManageRules : Screen("manage_rules", "Manage Rules")
     object Analysis : Screen("analysis", "Category Analysis")
+    object PdfImport : Screen("pdf_import", "Import from PDF")
 }
 
 @AndroidEntryPoint
@@ -169,6 +170,9 @@ fun MainScreen() {
                     onBackClick = { navController.popBackStack() },
                     onManageRulesClick = {
                         navController.navigate(Screen.ManageRules.route)
+                    },
+                    onPdfImportClick = {
+                        navController.navigate(Screen.PdfImport.route)
                     }
                 )
             }
@@ -181,6 +185,16 @@ fun MainScreen() {
             composable(Screen.Analysis.route) {
                 CategoryAnalysisScreen(
                     onBackClick = { navController.popBackStack() }
+                )
+            }
+            
+            composable(Screen.PdfImport.route) {
+                com.expensetracker.presentation.pdfimport.PdfImportScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onImportSuccess = { 
+                        navController.popBackStack()
+                        navController.navigate(Screen.Dashboard.route)
+                    }
                 )
             }
         }
