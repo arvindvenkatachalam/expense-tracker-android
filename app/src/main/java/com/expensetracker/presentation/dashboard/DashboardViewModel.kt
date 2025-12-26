@@ -33,10 +33,13 @@ class DashboardViewModel @Inject constructor(
 ) : ViewModel() {
     
     private val _selectedPeriod = MutableStateFlow(TimePeriod.THIS_MONTH)
+    private val _refreshTrigger = MutableStateFlow(0L)
     
     private val timeRange = _selectedPeriod.map { it.getTimeRange() }
     
-    private val transactions = timeRange.flatMapLatest { (start, end) ->
+    private val transactions = combine(timeRange, _refreshTrigger) { range, _ ->
+        range
+    }.flatMapLatest { (start, end) ->
         repository.getTransactionsByTimeRange(start, end)
     }
     
@@ -84,12 +87,9 @@ class DashboardViewModel @Inject constructor(
     }
     
     /**
-     * Force refresh by toggling period to trigger Flow re-emission
+     * Force refresh by incrementing trigger to force Flow re-emission
      */
     fun forceRefresh() {
-        val current = _selectedPeriod.value
-        // Toggle to trigger Flow update
-        _selectedPeriod.value = TimePeriod.TODAY
-        _selectedPeriod.value = current
+        _refreshTrigger.value = System.currentTimeMillis()
     }
 }
