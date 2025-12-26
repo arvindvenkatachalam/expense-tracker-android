@@ -67,7 +67,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.5")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
-
+    
     // Material Components (for Material 3 theme attributes)
     implementation("com.google.android.material:material:1.11.0")
 
@@ -90,6 +90,9 @@ dependencies {
     
     // Accompanist for permissions
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+    
+    // PDF parsing
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
@@ -100,4 +103,3 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
-
