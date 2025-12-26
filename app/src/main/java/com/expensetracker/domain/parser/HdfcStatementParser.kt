@@ -28,10 +28,11 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()),
             SimpleDateFormat("dd MMM yyyy", Locale.getDefault()),
             SimpleDateFormat("dd/MM/yy", Locale.getDefault()).apply {
-                // Set 2-digit year to start from 1950, so "25" becomes 2025, not 0025
-                set2DigitYearStart(Date(0L)) // Jan 1, 1970
+                // Set 2-digit year pivot to year 2000
+                // This makes years 00-99 map to 2000-2099
                 val calendar = Calendar.getInstance()
-                calendar.set(1950, 0, 1) // Start from year 1950
+                calendar.set(2000, Calendar.JANUARY, 1, 0, 0, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
                 set2DigitYearStart(calendar.time)
             }
         )
@@ -134,7 +135,9 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             try {
                 val date = format.parse(dateStr)
                 if (date != null) {
-                    return date.time
+                    val timestamp = date.time
+                    Log.d(TAG, "Parsed date '$dateStr' as: ${Date(timestamp)} (timestamp: $timestamp)")
+                    return timestamp
                 }
             } catch (e: Exception) {
                 // Try next format
