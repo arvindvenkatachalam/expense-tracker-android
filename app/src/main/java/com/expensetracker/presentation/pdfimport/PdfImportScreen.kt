@@ -48,6 +48,8 @@ fun PdfImportScreen(
     // Handle import success
     LaunchedEffect(state.importSuccess) {
         if (state.importSuccess) {
+            // Small delay to ensure database Flow updates propagate
+            kotlinx.coroutines.delay(500)
             onImportSuccess()
         }
     }
