@@ -338,4 +338,3 @@ fun EmptyStateCard() {
         }
     }
 }
-
