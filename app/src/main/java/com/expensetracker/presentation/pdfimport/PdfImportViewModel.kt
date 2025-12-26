@@ -137,8 +137,13 @@ class PdfImportViewModel @Inject constructor(
             _state.value = _state.value.copy(isLoading = true)
             
             val selectedTransactions = _state.value.pdfTransactions.filter { it.isSelected }
+            Log.d(TAG, "Selected ${selectedTransactions.size} transactions for import")
             
-            selectedTransactions.forEach { pdfTx ->
+            selectedTransactions.forEachIndexed { index, pdfTx ->
+                Log.d(TAG, "Importing transaction $index: ${pdfTx.description}, " +
+                    "amount=${pdfTx.amount}, timestamp=${pdfTx.timestamp}, " +
+                    "date=${java.util.Date(pdfTx.timestamp)}, type=${if (pdfTx.isDebit) "DEBIT" else "CREDIT"}")
+                
                 val transaction = Transaction(
                     amount = pdfTx.amount,
                     merchant = pdfTx.description,
@@ -151,7 +156,18 @@ class PdfImportViewModel @Inject constructor(
                     isManuallyEdited = false
                 )
                 
-                transactionDao.insertTransaction(transaction)
+                val rowId = transactionDao.insertTransaction(transaction)
+                Log.d(TAG, "Inserted transaction with row ID: $rowId")
+            }
+            
+            // Verify insertion
+            val allTransactions = transactionDao.getAllTransactionsDirect()
+            Log.d(TAG, "Total transactions in DB after import: ${allTransactions.size}")
+            if (allTransactions.isNotEmpty()) {
+                Log.d(TAG, "Last 3 transactions in DB:")
+                allTransactions.take(3).forEach { tx ->
+                    Log.d(TAG, "  - ${tx.merchant}: ${tx.amount} at ${java.util.Date(tx.timestamp)} (${tx.transactionType})")
+                }
             }
             
             Log.d(TAG, "Successfully imported ${selectedTransactions.size} transactions")
