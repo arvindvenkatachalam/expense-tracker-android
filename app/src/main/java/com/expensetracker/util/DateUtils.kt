@@ -78,10 +78,12 @@ enum class TimePeriod {
 }
 
 fun TimePeriod.getTimeRange(): Pair<Long, Long> {
-    return when (this) {
+    val range = when (this) {
         TimePeriod.TODAY -> DateUtils.getTodayRange()
         TimePeriod.THIS_WEEK -> DateUtils.getThisWeekRange()
         TimePeriod.THIS_MONTH -> DateUtils.getThisMonthRange()
         TimePeriod.CUSTOM -> Pair(0L, System.currentTimeMillis())
     }
+    android.util.Log.d("TimePeriod", "$this range: ${java.util.Date(range.first)} to ${java.util.Date(range.second)}")
+    return range
 }
