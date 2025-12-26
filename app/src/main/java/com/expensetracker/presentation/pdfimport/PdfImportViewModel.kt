@@ -142,17 +142,17 @@ class PdfImportViewModel @Inject constructor(
             selectedTransactions.forEachIndexed { index, pdfTx ->
                 Log.d(TAG, "Importing transaction $index: ${pdfTx.description}, " +
                     "amount=${pdfTx.amount}, timestamp=${pdfTx.timestamp}, " +
-                    "date=${java.util.Date(pdfTx.timestamp)}, type=${if (pdfTx.isDebit) "DEBIT" else "CREDIT"}")
+                    "date=${java.util.Date(pdfTx.timestamp)}, type=${if (pdfTx.isDebit) \"DEBIT\" else \"CREDIT\"}")
                 
                 val transaction = Transaction(
                     amount = pdfTx.amount,
                     merchant = pdfTx.description,
-                    categoryId = pdfTx.suggestedCategoryId ?: 7L, // Default to "Others"
+                    categoryId = pdfTx.suggestedCategoryId ?: 7L, // Default to \"Others\"
                     timestamp = pdfTx.timestamp,
-                    smsBody = "Imported from PDF",
-                    bankName = "HDFC",
-                    accountLast4 = "",
-                    transactionType = if (pdfTx.isDebit) "DEBIT" else "CREDIT",
+                    smsBody = \"Imported from PDF\",
+                    bankName = \"HDFC\",
+                    accountLast4 = \"\",
+                    transactionType = if (pdfTx.isDebit) \"DEBIT\" else \"CREDIT\",
                     isManuallyEdited = false
                 )
                 
@@ -172,9 +172,12 @@ class PdfImportViewModel @Inject constructor(
             
             Log.d(TAG, "Successfully imported ${selectedTransactions.size} transactions")
             
+            // Store import details for success message
             _state.value = _state.value.copy(
                 isLoading = false,
-                importSuccess = true
+                importSuccess = true,
+                importedCount = selectedTransactions.size,
+                importMessage = \"Imported ${selectedTransactions.size} transactions. Total in DB: ${allTransactions.size}\"
             )
             
         } catch (e: Exception) {
@@ -227,5 +230,7 @@ data class PdfImportState(
     val selectedCount: Int = 0,
     val totalAmount: Double = 0.0,
     val error: String? = null,
-    val importSuccess: Boolean = false
+    val importSuccess: Boolean = false,
+    val importedCount: Int = 0,
+    val importMessage: String? = null
 )
