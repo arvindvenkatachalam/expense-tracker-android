@@ -93,12 +93,22 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         
         // Find where transactions start (after "Statement of account" header)
         var startIndex = -1
+        var endIndex = lines.size
+        
         for (i in lines.indices) {
             if (lines[i].contains("Date") && 
                 lines[i].contains("Narration") && 
                 lines[i].contains("Withdrawal Amt.")) {
                 startIndex = i + 1
                 Log.d(TAG, "Found transaction table at line $i")
+            }
+            
+            // Find where statement summary starts - stop parsing here
+            if (lines[i].contains("STATEMENT SUMMARY", ignoreCase = true) ||
+                lines[i].contains("Opening Balance", ignoreCase = true) && 
+                lines[i].contains("Dr Count", ignoreCase = true)) {
+                endIndex = i
+                Log.d(TAG, "Found statement summary at line $i, stopping transaction parsing")
                 break
             }
         }
@@ -109,7 +119,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         }
         
         var i = startIndex
-        while (i < lines.size) {
+        while (i < endIndex) {  // Changed from lines.size to endIndex
             val line = lines[i].trim()
             
             // Check if line starts with a date
@@ -125,8 +135,8 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                     transactionLines.add(line)
                     
                     var j = i + 1
-                    // Collect subsequent lines until we hit another date or end
-                    while (j < lines.size) {
+                    // Collect subsequent lines until we hit another date, summary, or end
+                    while (j < endIndex) {  // Changed from lines.size to endIndex
                         val nextLine = lines[j].trim()
                         
                         // Stop if we hit another transaction (starts with date)
@@ -136,6 +146,11 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                         
                         // Stop if we hit HDFC BANK LIMITED footer
                         if (nextLine.contains("HDFC BANK LIMITED")) {
+                            break
+                        }
+                        
+                        // Stop if we hit statement summary
+                        if (nextLine.contains("STATEMENT SUMMARY", ignoreCase = true)) {
                             break
                         }
                         
