@@ -111,18 +111,26 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 startIndex = i + 1
                 
                 // Detect column positions from header
+                // IMPORTANT: Headers are center-aligned, but amounts are RIGHT-aligned
+                // So we need to adjust positions to the right edge of each column
                 val withdrawalPos = line.indexOf("Withdrawal Amt.")
                 val depositPos = line.indexOf("Deposit Amt.")
                 val balancePos = line.indexOf("Closing Balance")
                 
+                // Calculate approximate right edge of each column
+                // Add the text length to get to the end of the header text
+                val withdrawalEnd = if (withdrawalPos >= 0) withdrawalPos + "Withdrawal Amt.".length else -1
+                val depositEnd = if (depositPos >= 0) depositPos + "Deposit Amt.".length else -1
+                val balanceEnd = if (balancePos >= 0) balancePos + "Closing Balance".length else -1
+                
                 columnPositions = ColumnPositions(
-                    withdrawalStart = if (withdrawalPos >= 0) withdrawalPos else -1,
-                    depositStart = if (depositPos >= 0) depositPos else -1,
-                    balanceStart = if (balancePos >= 0) balancePos else -1
+                    withdrawalStart = withdrawalEnd,
+                    depositStart = depositEnd,
+                    balanceStart = balanceEnd
                 )
                 
                 Log.d(TAG, "Found header at line $i")
-                Log.d(TAG, "Column positions - Withdrawal: ${columnPositions.withdrawalStart}, Deposit: ${columnPositions.depositStart}, Balance: ${columnPositions.balanceStart}")
+                Log.d(TAG, "Column END positions - Withdrawal: ${columnPositions.withdrawalStart}, Deposit: ${columnPositions.depositStart}, Balance: ${columnPositions.balanceStart}")
             }
             
             // Find statement summary
@@ -282,11 +290,12 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             
             for (match in transactionAmounts) {
                 val amount = match.value.replace(",", "").toDouble()
-                val position = match.range.first
+                // Use the END position of the amount (right-aligned)
+                val position = match.range.last
                 
-                Log.d(TAG, "Amount: $amount at position $position")
+                Log.d(TAG, "Amount: $amount ends at position $position")
                 
-                // Calculate distance to withdrawal and deposit columns only
+                // Calculate distance to column END positions
                 val distToWithdrawal = if (columnPositions.withdrawalStart > 0) {
                     abs(position - columnPositions.withdrawalStart)
                 } else {
@@ -299,16 +308,16 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                     Int.MAX_VALUE
                 }
                 
-                Log.d(TAG, "  Distance to Withdrawal col: $distToWithdrawal")
-                Log.d(TAG, "  Distance to Deposit col: $distToDeposit")
+                Log.d(TAG, "  Distance to Withdrawal col end: $distToWithdrawal")
+                Log.d(TAG, "  Distance to Deposit col end: $distToDeposit")
                 
                 // Assign to nearest column (withdrawal or deposit)
                 if (distToWithdrawal < distToDeposit) {
                     withdrawal = amount
-                    Log.d(TAG, "  → WITHDRAWAL (closer to withdrawal column)")
+                    Log.d(TAG, "  → WITHDRAWAL (closer to withdrawal column end)")
                 } else {
                     deposit = amount
-                    Log.d(TAG, "  → DEPOSIT (closer to deposit column)")
+                    Log.d(TAG, "  → DEPOSIT (closer to deposit column end)")
                 }
             }
             
