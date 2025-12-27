@@ -95,6 +95,9 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         var startIndex = -1
         var endIndex = lines.size
         
+        // Store previous balance to help determine transaction type
+        var previousBalance: Double? = null
+        
         for (i in lines.indices) {
             if (lines[i].contains("Date") && 
                 lines[i].contains("Narration") && 
@@ -119,7 +122,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         }
         
         var i = startIndex
-        while (i < endIndex) {  // Changed from lines.size to endIndex
+        while (i < endIndex) {
             val line = lines[i].trim()
             
             // Check if line starts with a date
@@ -136,7 +139,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                     
                     var j = i + 1
                     // Collect subsequent lines until we hit another date, summary, or end
-                    while (j < endIndex) {  // Changed from lines.size to endIndex
+                    while (j < endIndex) {
                         val nextLine = lines[j].trim()
                         
                         // Stop if we hit another transaction (starts with date)
@@ -161,9 +164,12 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                     }
                     
                     // Parse the collected transaction block
-                    val transaction = parseTransactionBlock(dateStr, transactionLines)
+                    val transaction = parseTransactionBlock(dateStr, transactionLines, previousBalance)
                     if (transaction != null) {
                         transactions.add(transaction)
+                        
+                        // Update previous balance for next transaction
+                        previousBalance = transaction.balance
                         
                         // Log withdrawal transactions
                         if (transaction.debit != null && transaction.debit > 0) {
@@ -188,7 +194,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         return transactions
     }
     
-    private fun parseTransactionBlock(dateStr: String, lines: List<String>): PdfTransaction? {
+    private fun parseTransactionBlock(dateStr: String, lines: List<String>, previousBalance: Double?): PdfTransaction? {
         try {
             // Combine all lines into one block
             val fullText = lines.joinToString(" ")
