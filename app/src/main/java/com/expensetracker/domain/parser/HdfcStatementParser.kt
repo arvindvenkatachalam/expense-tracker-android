@@ -267,20 +267,10 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                     // Last is always balance
                     balance = amountsWithPos[1].value
                     
-                    // Calculate the gap between amounts
-                    val gap = amountsWithPos[1].position - (amountsWithPos[0].position + amountsWithPos[0].text.length)
-                    
-                    Log.d(TAG, "Gap between amounts: $gap characters")
-                    
-                    // If gap is large (>10 spaces), first amount is withdrawal, second is balance
-                    // If gap is medium (5-10 spaces), first amount is deposit, second is balance
-                    if (gap > 10) {
-                        withdrawal = amountsWithPos[0].value
-                        Log.d(TAG, "Case 2a: Large gap -> Withdrawal = $withdrawal, Balance = $balance")
-                    } else {
-                        deposit = amountsWithPos[0].value
-                        Log.d(TAG, "Case 2b: Small gap -> Deposit = $deposit, Balance = $balance")
-                    }
+                    // Since we're only parsing withdrawal transactions from HDFC,
+                    // the first amount should always be a withdrawal
+                    withdrawal = amountsWithPos[0].value
+                    Log.d(TAG, "Case 2: Withdrawal = $withdrawal, Balance = $balance")
                 }
                 3 -> {
                     // Withdrawal, deposit, balance
