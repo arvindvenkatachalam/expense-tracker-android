@@ -171,11 +171,9 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                         // Update previous balance for next transaction
                         previousBalance = transaction.balance
                         
-                        // Log withdrawal transactions
+                        // Log only withdrawal transactions
                         if (transaction.debit != null && transaction.debit > 0) {
-                            Log.d(TAG, "✓ WITHDRAWAL: ${transaction.date} - ${transaction.description} - ₹${transaction.debit}")
-                        } else if (transaction.credit != null && transaction.credit > 0) {
-                            Log.d(TAG, "✓ DEPOSIT: ${transaction.date} - ${transaction.description} - ₹${transaction.credit}")
+                            Log.d(TAG, "WITHDRAWAL: ${transaction.date} - ${transaction.description} - ₹${transaction.debit}")
                         }
                     }
                     
