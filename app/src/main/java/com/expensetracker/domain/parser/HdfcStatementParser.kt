@@ -190,7 +190,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
     
     private fun parseTransactionBlock(dateStr: String, lines: List<String>): PdfTransaction? {
         try {
-            // Combine all lines into one block for easier parsing
+            // Combine all lines into one block
             val fullText = lines.joinToString(" ")
             
             Log.d(TAG, "Parsing block: $fullText")
@@ -201,7 +201,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             val refMatch = refNumberPattern.find(fullText)
             
             var description = ""
-            var afterRefText = ""
+            var amountsSection = ""
             
             if (refMatch != null) {
                 // Description is before the reference number
@@ -210,65 +210,101 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 description = description.replace(Regex("""^\d{2}[/-]\d{2}[/-]\d{2,4}\s*"""), "").trim()
                 
                 // Text after reference number contains: value date, withdrawal, deposit, balance
-                afterRefText = fullText.substring(refMatch.range.last + 1).trim()
+                amountsSection = fullText.substring(refMatch.range.last + 1).trim()
             } else {
-                // No reference number found, try to extract description differently
+                // No reference number found
                 description = lines.drop(1).joinToString(" ").trim()
-                afterRefText = lines.lastOrNull() ?: ""
+                amountsSection = lines.lastOrNull() ?: ""
             }
             
             Log.d(TAG, "Description: $description")
-            Log.d(TAG, "After ref: $afterRefText")
+            Log.d(TAG, "Amounts section: $amountsSection")
             
-            // Extract amounts from the end
-            // Pattern: value_date withdrawal deposit balance
-            // withdrawal and deposit are optional
-            val amountPattern = Regex("""([\d,]+\.\d{2})""")
-            val amounts = amountPattern.findAll(afterRefText).map { 
-                it.groupValues[1].replace(",", "").toDouble() 
-            }.toList()
-            
-            Log.d(TAG, "Found amounts: $amounts")
-            
-            // The amounts appear in order: [withdrawal], [deposit], balance
-            // We need to figure out which is which based on the pattern
+            // Parse the amounts section properly
+            // HDFC Format after ref: [value_date] [withdrawal_space] [deposit_space] [balance]
+            // Where withdrawal_space and deposit_space can be empty or contain amount
             
             var withdrawal: Double? = null
             var deposit: Double? = null
             var balance: Double? = null
             
-            when (amounts.size) {
-                1 -> {
-                    // Only balance
-                    balance = amounts[0]
+            // Strategy: Split by multiple spaces to identify column boundaries
+            // First, remove the value date
+            val withoutValueDate = amountsSection.replaceFirst(Regex("""^\d{2}[/-]\d{2}[/-]\d{2,4}"""), "").trim()
+            
+            Log.d(TAG, "After removing value date: '$withoutValueDate'")
+            
+            // Now we have: [withdrawal_space] [deposit_space] [balance]
+            // Split by 2+ spaces to separate columns
+            val parts = withoutValueDate.split(Regex("""\s{2,}""")).filter { it.isNotBlank() }
+            
+            Log.d(TAG, "Split parts: $parts")
+            
+            // If we can split by spaces, use that to determine columns
+            if (parts.size >= 1) {
+                // Parse each part as a potential amount
+                val amounts = parts.mapNotNull { part ->
+                    val cleaned = part.trim().replace(",", "")
+                    cleaned.toDoubleOrNull()
                 }
-                2 -> {
-                    // Could be: withdrawal + balance OR deposit + balance
-                    // Check if description indicates deposit (UPI credits usually have "CREDIT" or incoming payments)
-                    if (description.contains("CREDIT", ignoreCase = true) ||
-                        description.contains("SALARY", ignoreCase = true) ||
-                        description.contains("NEFT", ignoreCase = true) ||
-                        description.contains("IMPS", ignoreCase = true)) {
-                        deposit = amounts[0]
+                
+                Log.d(TAG, "Parsed amounts from parts: $amounts")
+                
+                when (amounts.size) {
+                    1 -> {
+                        // Only balance present (no withdrawal or deposit)
+                        balance = amounts[0]
+                    }
+                    2 -> {
+                        // Two amounts: either (withdrawal, balance) OR (deposit, balance)
+                        // The last one is always balance
                         balance = amounts[1]
-                    } else {
+                        
+                        // Determine if first is withdrawal or deposit
+                        // Check position in original text - if it appears early, likely withdrawal
+                        val firstAmount = amounts[0]
+                        val firstAmountStr = String.format("%.2f", firstAmount).replace(".00", "").replace(",", "")
+                        val positionInText = withoutValueDate.indexOf(firstAmountStr)
+                        
+                        // If amount appears in first half of text, it's withdrawal column
+                        // If in second half, it's deposit column
+                        if (positionInText < withoutValueDate.length / 2) {
+                            withdrawal = firstAmount
+                        } else {
+                            deposit = firstAmount
+                        }
+                    }
+                    3 -> {
+                        // Three amounts: withdrawal, deposit, balance
                         withdrawal = amounts[0]
-                        balance = amounts[1]
+                        deposit = amounts[1]
+                        balance = amounts[2]
+                    }
+                    else -> {
+                        balance = amounts.lastOrNull()
                     }
                 }
-                3 -> {
-                    // withdrawal, deposit, balance
-                    withdrawal = amounts[0]
-                    deposit = amounts[1]
-                    balance = amounts[2]
-                }
-                else -> {
-                    // Take last as balance
-                    balance = amounts.lastOrNull()
-                    // If more than 3, try to get withdrawal from reasonable position
-                    if (amounts.size > 1) {
-                        withdrawal = amounts[amounts.size - 3]
+            } else {
+                // Fallback: extract all amounts and use last as balance
+                val amountPattern = Regex("""([\d,]+\.\d{2})""")
+                val allAmounts = amountPattern.findAll(withoutValueDate).map { 
+                    it.groupValues[1].replace(",", "").toDouble() 
+                }.toList()
+                
+                Log.d(TAG, "Fallback - all amounts: $allAmounts")
+                
+                when (allAmounts.size) {
+                    1 -> balance = allAmounts[0]
+                    2 -> {
+                        balance = allAmounts[1]
+                        withdrawal = allAmounts[0]
                     }
+                    3 -> {
+                        withdrawal = allAmounts[0]
+                        deposit = allAmounts[1]
+                        balance = allAmounts[2]
+                    }
+                    else -> balance = allAmounts.lastOrNull()
                 }
             }
             
