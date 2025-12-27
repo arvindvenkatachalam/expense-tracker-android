@@ -55,8 +55,11 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         )
         
         // Regex patterns for transaction parsing
+        // HDFC format: Date | Narration | Chq/Ref | Value Date | Withdrawal | Deposit | Balance
+        // Pattern matches: Date, Description, then captures last 3 numbers (withdrawal, deposit, balance)
+        // Empty columns are handled by making withdrawal and deposit optional
         private val TRANSACTION_PATTERN = Regex(
-            """(\d{2}[/-]\d{2}[/-]\d{2,4})\s+(.+?)\s+([\d,]+\.\d{2})?\s*([\d,]+\.\d{2})?\s*([\d,]+\.\d{2})""",
+            """(\d{2}[/-]\d{2}[/-]\d{2,4})\s+(.+?)\s+\d+\s+\d{2}[/-]\d{2}[/-]\d{2,4}\s+([\d,]+\.?\d{0,2})?\s*([\d,]+\.?\d{0,2})?\s*([\d,]+\.?\d{0,2})""",
             RegexOption.MULTILINE
         )
         
@@ -109,19 +112,25 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             try {
                 val groups = match.groupValues
                 
+                // DEBUG: Log all captured groups
+                Log.d(TAG, "Raw match: ${match.value}")
+                Log.d(TAG, "Groups: [0]='${groups[0]}' [1]='${groups[1]}' [2]='${groups[2]}' [3]='${groups[3]}' [4]='${groups[4]}' [5]='${groups[5]}'")
+                
                 // Extract fields
                 val dateStr = groups[1]
                 val description = groups[2].trim()
-                val debitStr = groups[3].takeIf { it.isNotBlank() }
-                val creditStr = groups[4].takeIf { it.isNotBlank() }
-                val balanceStr = groups[5]
+                val withdrawalStr = groups[3].takeIf { it.isNotBlank() }  // Column 5: Withdrawal
+                val depositStr = groups[4].takeIf { it.isNotBlank() }     // Column 6: Deposit
+                val balanceStr = groups[5]                                  // Column 7: Balance
+                
+                Log.d(TAG, "Parsed: Date=$dateStr, Withdrawal=$withdrawalStr, Deposit=$depositStr, Balance=$balanceStr")
                 
                 // Parse date
                 val timestamp = parseDate(dateStr)
                 
                 // Parse amounts
-                val debit = debitStr?.let { parseAmount(it) }
-                val credit = creditStr?.let { parseAmount(it) }
+                val debit = withdrawalStr?.let { parseAmount(it) }
+                val credit = depositStr?.let { parseAmount(it) }
                 val balance = parseAmount(balanceStr)
                 
                 // Create transaction
@@ -138,7 +147,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 
                 // Log only withdrawal (debit) transactions
                 if (debit != null && debit > 0) {
-                    Log.d(TAG, "Parsed WITHDRAWAL: $dateStr - $description - Amount: ₹$debit")
+                    Log.d(TAG, "WITHDRAWAL: $dateStr - $description - ₹$debit")
                 }
                 
             } catch (e: Exception) {
