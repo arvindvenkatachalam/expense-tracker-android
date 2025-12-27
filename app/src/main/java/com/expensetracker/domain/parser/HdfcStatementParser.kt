@@ -136,7 +136,10 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 
                 transactions.add(transaction)
                 
-                Log.d(TAG, "Parsed transaction: $dateStr - $description - Debit: $debit, Credit: $credit")
+                // Log only withdrawal (debit) transactions
+                if (debit != null && debit > 0) {
+                    Log.d(TAG, "Parsed WITHDRAWAL: $dateStr - $description - Amount: ₹$debit")
+                }
                 
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to parse transaction line: ${match.value}", e)
