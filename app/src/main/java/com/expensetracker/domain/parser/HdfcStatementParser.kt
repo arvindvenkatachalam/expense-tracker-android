@@ -221,7 +221,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 
                 // The line with amounts typically has a reference number
                 // and ends with balance
-                if (nextLine.contains(Regex("""\d{15,}""))) {
+                if (nextLine.contains(Regex("""\d{15,}"""))) {
                     // Check if this line or next has amounts
                     if (nextLine.contains(Regex("""[\d,]+\.\d{2}"""))) {
                         amountsLine = nextLine
