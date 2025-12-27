@@ -221,7 +221,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 
                 // The line with amounts typically has a reference number
                 // and ends with balance
-                if (nextLine.contains(Regex("""\d{15,}"""))) {
+                if (nextLine.contains(Regex("""\d{15,}""))) {
                     // Check if this line or next has amounts
                     if (nextLine.contains(Regex("""[\d,]+\.\d{2}"""))) {
                         amountsLine = nextLine
@@ -265,29 +265,47 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             
             Log.d(TAG, "Found ${allMatches.size} amounts in line")
             
-            // Map amounts to columns based on their position
+            // Assign each amount to the closest column
             for (match in allMatches) {
                 val amount = match.value.replace(",", "").toDouble()
                 val position = match.range.first
                 
                 Log.d(TAG, "Amount: $amount at position $position")
                 
-                // Determine which column this amount belongs to
-                when {
-                    // Balance column (rightmost)
-                    position >= columnPositions.balanceStart -> {
-                        balance = amount
-                        Log.d(TAG, "  → BALANCE (pos >= ${columnPositions.balanceStart})")
-                    }
-                    // Deposit column
-                    position >= columnPositions.depositStart && columnPositions.depositStart > 0 -> {
-                        deposit = amount
-                        Log.d(TAG, "  → DEPOSIT (pos >= ${columnPositions.depositStart})")
-                    }
-                    // Withdrawal column
-                    position >= columnPositions.withdrawalStart && columnPositions.withdrawalStart > 0 -> {
+                // Calculate distance to each column
+                val distToWithdrawal = if (columnPositions.withdrawalStart > 0) {
+                    Math.abs(position - columnPositions.withdrawalStart)
+                } else {
+                    Int.MAX_VALUE
+                }
+                
+                val distToDeposit = if (columnPositions.depositStart > 0) {
+                    Math.abs(position - columnPositions.depositStart)
+                } else {
+                    Int.MAX_VALUE
+                }
+                
+                val distToBalance = if (columnPositions.balanceStart > 0) {
+                    Math.abs(position - columnPositions.balanceStart)
+                } else {
+                    Int.MAX_VALUE
+                }
+                
+                // Assign to nearest column
+                val minDist = minOf(distToWithdrawal, distToDeposit, distToBalance)
+                
+                when (minDist) {
+                    distToWithdrawal -> {
                         withdrawal = amount
-                        Log.d(TAG, "  → WITHDRAWAL (pos >= ${columnPositions.withdrawalStart})")
+                        Log.d(TAG, "  → WITHDRAWAL (closest to col ${columnPositions.withdrawalStart}, dist=$distToWithdrawal)")
+                    }
+                    distToDeposit -> {
+                        deposit = amount
+                        Log.d(TAG, "  → DEPOSIT (closest to col ${columnPositions.depositStart}, dist=$distToDeposit)")
+                    }
+                    distToBalance -> {
+                        balance = amount
+                        Log.d(TAG, "  → BALANCE (closest to col ${columnPositions.balanceStart}, dist=$distToBalance)")
                     }
                 }
             }
