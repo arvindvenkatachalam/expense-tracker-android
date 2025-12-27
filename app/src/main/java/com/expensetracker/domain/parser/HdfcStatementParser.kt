@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
+import kotlin.math.abs
 
 /**
  * Parser for HDFC Bank statement PDFs
@@ -221,7 +222,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 
                 // The line with amounts typically has a reference number
                 // and ends with balance
-                if (nextLine.contains(Regex("""\d{15,}""))) {
+                if (nextLine.contains(Regex("""\d{15,}"""))) {
                     // Check if this line or next has amounts
                     if (nextLine.contains(Regex("""[\d,]+\.\d{2}"""))) {
                         amountsLine = nextLine
@@ -274,19 +275,19 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 
                 // Calculate distance to each column
                 val distToWithdrawal = if (columnPositions.withdrawalStart > 0) {
-                    Math.abs(position - columnPositions.withdrawalStart)
+                    abs(position - columnPositions.withdrawalStart)
                 } else {
                     Int.MAX_VALUE
                 }
                 
                 val distToDeposit = if (columnPositions.depositStart > 0) {
-                    Math.abs(position - columnPositions.depositStart)
+                    abs(position - columnPositions.depositStart)
                 } else {
                     Int.MAX_VALUE
                 }
                 
                 val distToBalance = if (columnPositions.balanceStart > 0) {
-                    Math.abs(position - columnPositions.balanceStart)
+                    abs(position - columnPositions.balanceStart)
                 } else {
                     Int.MAX_VALUE
                 }
