@@ -15,7 +15,7 @@ import javax.inject.Inject
 
 /**
  * Parser for HDFC Bank statement PDFs
- * Uses original line structure to preserve column positions
+ * Uses fixed column width approach for reliable parsing
  */
 class HdfcStatementParser @Inject constructor() : PdfParser {
     
@@ -49,6 +49,13 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 calendar.set(Calendar.MILLISECOND, 0)
                 set2DigitYearStart(calendar.time)
             }
+        )
+        
+        // Column boundaries (will be auto-detected from header)
+        data class ColumnPositions(
+            val withdrawalStart: Int = -1,
+            val depositStart: Int = -1,
+            val balanceStart: Int = -1
         )
     }
     
@@ -90,21 +97,37 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         val transactions = mutableListOf<PdfTransaction>()
         val lines = text.lines()
         
-        // Find table boundaries
+        // Find table header and detect column positions
         var startIndex = -1
         var endIndex = lines.size
+        var columnPositions = ColumnPositions()
         
         for (i in lines.indices) {
-            if (lines[i].contains("Date") && 
-                lines[i].contains("Narration") && 
-                lines[i].contains("Withdrawal Amt.")) {
+            val line = lines[i]
+            
+            // Detect header line with column titles
+            if (line.contains("Withdrawal Amt.") && line.contains("Deposit Amt.") && line.contains("Closing Balance")) {
                 startIndex = i + 1
-                Log.d(TAG, "Found transaction table at line $i")
+                
+                // Detect column positions from header
+                val withdrawalPos = line.indexOf("Withdrawal Amt.")
+                val depositPos = line.indexOf("Deposit Amt.")
+                val balancePos = line.indexOf("Closing Balance")
+                
+                columnPositions = ColumnPositions(
+                    withdrawalStart = if (withdrawalPos >= 0) withdrawalPos else -1,
+                    depositStart = if (depositPos >= 0) depositPos else -1,
+                    balanceStart = if (balancePos >= 0) balancePos else -1
+                )
+                
+                Log.d(TAG, "Found header at line $i")
+                Log.d(TAG, "Column positions - Withdrawal: ${columnPositions.withdrawalStart}, Deposit: ${columnPositions.depositStart}, Balance: ${columnPositions.balanceStart}")
             }
             
-            if (lines[i].contains("STATEMENT SUMMARY", ignoreCase = true) ||
-                (lines[i].contains("Opening Balance", ignoreCase = true) && 
-                 lines[i].contains("Dr Count", ignoreCase = true))) {
+            // Find statement summary
+            if (line.contains("STATEMENT SUMMARY", ignoreCase = true) ||
+                (line.contains("Opening Balance", ignoreCase = true) && 
+                 line.contains("Dr Count", ignoreCase = true))) {
                 endIndex = i
                 Log.d(TAG, "Found statement summary at line $i")
                 break
@@ -116,6 +139,16 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             return transactions
         }
         
+        // If column detection failed, use default positions
+        if (columnPositions.balanceStart == -1) {
+            Log.w(TAG, "Using default column positions")
+            columnPositions = ColumnPositions(
+                withdrawalStart = 60,
+                depositStart = 85,
+                balanceStart = 110
+            )
+        }
+        
         var i = startIndex
         while (i < endIndex) {
             val line = lines[i]
@@ -123,8 +156,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             // Check if line starts with a date
             if (line.matches(Regex("""^\d{2}[/-]\d{2}[/-]\d{2,4}.*"""))) {
                 try {
-                    // This is a transaction line - parse it directly
-                    val transaction = parseTransactionLine(line, lines, i, endIndex)
+                    val transaction = parseTransactionWithColumns(line, lines, i, endIndex, columnPositions)
                     if (transaction != null) {
                         transactions.add(transaction)
                         
@@ -145,141 +177,130 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         return transactions
     }
     
-    private fun parseTransactionLine(line: String, allLines: List<String>, currentIndex: Int, endIndex: Int): PdfTransaction? {
+    private fun parseTransactionWithColumns(
+        line: String, 
+        allLines: List<String>, 
+        currentIndex: Int, 
+        endIndex: Int,
+        columnPositions: ColumnPositions
+    ): PdfTransaction? {
         try {
-            Log.d(TAG, "=== Parsing Line ===")
+            Log.d(TAG, "=== Parsing Line $currentIndex ===")
             Log.d(TAG, "Line: '$line'")
+            Log.d(TAG, "Line length: ${line.length}")
             
-            // Extract date from start
+            // Extract date
             val dateMatch = Regex("""^(\d{2}[/-]\d{2}[/-]\d{2,4})""").find(line)
             if (dateMatch == null) {
                 Log.w(TAG, "No date found")
                 return null
             }
-            
             val dateStr = dateMatch.groupValues[1]
-            val afterDate = line.substring(dateMatch.range.last + 1)
             
-            Log.d(TAG, "Date: $dateStr")
-            Log.d(TAG, "After date: '$afterDate'")
+            // Collect full transaction block
+            val transactionLines = mutableListOf<String>()
+            transactionLines.add(line)
             
-            // Collect description from current and next lines until we find the reference number
-            var description = ""
-            var refNumber = ""
-            var amountsLine = ""
+            var j = currentIndex + 1
+            var amountsLine = line  // The line containing amounts
             
-            var j = currentIndex
             while (j < endIndex && j < currentIndex + 10) {
-                val checkLine = if (j == currentIndex) afterDate else allLines[j]
+                val nextLine = allLines[j]
                 
-                // Look for reference number (15-16 digits)
-                val refMatch = Regex("""\b(\d{15,})\b""").find(checkLine)
-                if (refMatch != null) {
-                    refNumber = refMatch.groupValues[1]
-                    
-                    // Description is everything before ref number
-                    val beforeRef = checkLine.substring(0, refMatch.range.first).trim()
-                    if (beforeRef.isNotEmpty()) {
-                        description += " " + beforeRef
-                    }
-                    
-                    // Amounts are after ref number
-                    amountsLine = checkLine.substring(refMatch.range.last + 1).trim()
-                    
-                    Log.d(TAG, "Found ref: $refNumber")
-                    Log.d(TAG, "Amounts line: '$amountsLine'")
+                // Stop if we hit another transaction
+                if (nextLine.matches(Regex("""^\d{2}[/-]\d{2}[/-]\d{2,4}.*"""))) {
                     break
-                } else {
-                    // No ref found yet, add to description
-                    description += " " + checkLine.trim()
+                }
+                
+                // Stop if we hit summary
+                if (nextLine.contains("STATEMENT SUMMARY", ignoreCase = true)) {
+                    break
+                }
+                
+                transactionLines.add(nextLine)
+                
+                // The line with amounts typically has a reference number
+                // and ends with balance
+                if (nextLine.contains(Regex("""\d{15,}""))) {
+                    // Check if this line or next has amounts
+                    if (nextLine.contains(Regex("""[\d,]+\.\d{2}"""))) {
+                        amountsLine = nextLine
+                    } else if (j + 1 < endIndex) {
+                        amountsLine = allLines[j + 1]
+                        transactionLines.add(amountsLine)
+                    }
+                    break
                 }
                 
                 j++
-                
-                // Stop if we hit another transaction date
-                if (j < endIndex && allLines[j].matches(Regex("""^\d{2}[/-]\d{2}[/-]\d{2,4}.*"""))) {
-                    break
-                }
             }
             
-            description = description.trim()
+            Log.d(TAG, "Amounts line: '$amountsLine'")
+            Log.d(TAG, "Amounts line length: ${amountsLine.length}")
+            
+            // Extract description
+            val fullText = transactionLines.joinToString(" ")
+            val refMatch = Regex("""\b(\d{15,})\b""").find(fullText)
+            val description = if (refMatch != null) {
+                fullText.substring(0, refMatch.range.first)
+                    .replace(Regex("""\d{2}[/-]\d{2}[/-]\d{2,4}"""), "")
+                    .replace(Regex("""\s+"""), " ")
+                    .trim()
+            } else {
+                fullText.replace(Regex("""\d{2}[/-]\d{2}[/-]\d{2,4}"""), "")
+                    .replace(Regex("""\s+"""), " ")
+                    .trim()
+            }
+            
             Log.d(TAG, "Description: '$description'")
             
-            // Parse amounts from amountsLine
-            // Format: [value_date] [withdrawal] [deposit] [balance]
-            
-            // Remove value date first (it's duplicate)
-            val withoutValueDate = amountsLine.replaceFirst(Regex("""^\d{2}[/-]\d{2}[/-]\d{2,4}"""), "").trim()
-            
-            Log.d(TAG, "Without value date: '$withoutValueDate'")
-            
-            // Now we need to parse: [withdrawal_col] [deposit_col] [balance_col]
-            // Key insight: Use the last number as balance, then work backwards
-            
-            val amountPattern = Regex("""([\d,]+\.\d{2})""")
-            val allAmounts = amountPattern.findAll(withoutValueDate).toList()
-            
-            Log.d(TAG, "Found ${allAmounts.size} amounts")
-            
-            if (allAmounts.isEmpty()) {
-                Log.w(TAG, "No amounts found")
-                return null
-            }
-            
+            // Extract amounts using column positions
             var withdrawal: Double? = null
             var deposit: Double? = null
-            var balance: Double
+            var balance: Double? = null
             
-            // The LAST amount is ALWAYS the balance
-            balance = allAmounts.last().value.replace(",", "").toDouble()
+            // Find all amounts in the amounts line
+            val amountPattern = Regex("""([\d,]+\.\d{2})""")
+            val allMatches = amountPattern.findAll(amountsLine).toList()
             
-            Log.d(TAG, "Balance (last): $balance")
+            Log.d(TAG, "Found ${allMatches.size} amounts in line")
             
-            // If there are more amounts, we need to identify which are withdrawal/deposit
-            when (allAmounts.size) {
-                1 -> {
-                    // Only balance, no transaction
-                    Log.d(TAG, "Only balance, no transaction amount")
-                }
-                2 -> {
-                    // One transaction amount + balance
-                    // Need to determine if it's withdrawal or deposit
-                    val txAmount = allAmounts[0].value.replace(",", "").toDouble()
-                    
-                    // Strategy: Look at the original line to see where this amount appears
-                    // If it's close to the start (left side), it's withdrawal
-                    // If it's close to the end (right side before balance), it's deposit
-                    
-                    val txPosition = allAmounts[0].range.first
-                    val balancePosition = allAmounts[1].range.first
-                    val totalLength = withoutValueDate.length
-                    
-                    // Calculate relative position (0.0 to 1.0)
-                    val relativePos = txPosition.toFloat() / totalLength
-                    
-                    Log.d(TAG, "Transaction amount: $txAmount at position $txPosition/$totalLength (${relativePos * 100}%)")
-                    
-                    // If amount is in first 40% of line, it's withdrawal
-                    // If in last 60%, it's deposit
-                    if (relativePos < 0.4) {
-                        withdrawal = txAmount
-                        Log.d(TAG, "→ WITHDRAWAL (left side)")
-                    } else {
-                        deposit = txAmount
-                        Log.d(TAG, "→ DEPOSIT (right side)")
+            // Map amounts to columns based on their position
+            for (match in allMatches) {
+                val amount = match.value.replace(",", "").toDouble()
+                val position = match.range.first
+                
+                Log.d(TAG, "Amount: $amount at position $position")
+                
+                // Determine which column this amount belongs to
+                when {
+                    // Balance column (rightmost)
+                    position >= columnPositions.balanceStart -> {
+                        balance = amount
+                        Log.d(TAG, "  → BALANCE (pos >= ${columnPositions.balanceStart})")
+                    }
+                    // Deposit column
+                    position >= columnPositions.depositStart && columnPositions.depositStart > 0 -> {
+                        deposit = amount
+                        Log.d(TAG, "  → DEPOSIT (pos >= ${columnPositions.depositStart})")
+                    }
+                    // Withdrawal column
+                    position >= columnPositions.withdrawalStart && columnPositions.withdrawalStart > 0 -> {
+                        withdrawal = amount
+                        Log.d(TAG, "  → WITHDRAWAL (pos >= ${columnPositions.withdrawalStart})")
                     }
                 }
-                3 -> {
-                    // Both withdrawal and deposit present
-                    withdrawal = allAmounts[0].value.replace(",", "").toDouble()
-                    deposit = allAmounts[1].value.replace(",", "").toDouble()
-                    Log.d(TAG, "Withdrawal: $withdrawal, Deposit: $deposit")
-                }
+            }
+            
+            // Fallback: if balance is null, last amount is balance
+            if (balance == null && allMatches.isNotEmpty()) {
+                balance = allMatches.last().value.replace(",", "").toDouble()
+                Log.d(TAG, "Fallback: Using last amount as balance: $balance")
             }
             
             val timestamp = parseDate(dateStr)
             
-            Log.d(TAG, "FINAL: Withdrawal=$withdrawal, Deposit=$deposit, Balance=$balance")
+            Log.d(TAG, "FINAL: Date=$dateStr, Withdrawal=$withdrawal, Deposit=$deposit, Balance=$balance")
             Log.d(TAG, "==================")
             
             return PdfTransaction(
@@ -288,11 +309,11 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 description = description,
                 debit = withdrawal,
                 credit = deposit,
-                balance = balance
+                balance = balance ?: 0.0
             )
             
         } catch (e: Exception) {
-            Log.e(TAG, "Error parsing transaction line", e)
+            Log.e(TAG, "Error parsing transaction", e)
             return null
         }
     }
