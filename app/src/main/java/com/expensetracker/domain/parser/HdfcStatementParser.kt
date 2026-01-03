@@ -31,14 +31,32 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         )
     }
     
-    override suspend fun parsePdf(context: Context, uri: Uri): List<PdfTransaction> = withContext(Dispatchers.IO) {
+    override suspend fun parsePdf(context: Context, uri: Uri, password: String?): List<PdfTransaction> = withContext(Dispatchers.IO) {
         try {
             PDFBoxResourceLoader.init(context)
             
             val inputStream = context.contentResolver.openInputStream(uri)
                 ?: throw PdfParsingException("Cannot open PDF file")
             
-            val document = PDDocument.load(inputStream)
+            val document = try {
+                if (password != null) {
+                    PDDocument.load(inputStream, password)
+                } else {
+                    PDDocument.load(inputStream)
+                }
+            } catch (e: Exception) {
+                inputStream.close()
+                // Check for password/encryption related errors
+                val msg = e.message?.lowercase() ?: ""
+                if (msg.contains("encrypted") || msg.contains("password")) {
+                    if (password == null) {
+                        throw PdfPasswordRequiredException()
+                    } else {
+                        throw PdfInvalidPasswordException()
+                    }
+                }
+                throw e
+            }
             val stripper = PDFTextStripper()
             val text = stripper.getText(document)
             

@@ -19,13 +19,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.expensetracker.domain.parser.PdfPasswordRequiredException
+import com.expensetracker.domain.parser.PdfInvalidPasswordException
 
 @HiltViewModel
 class PdfImportViewModel @Inject constructor(
     private val pdfParser: HdfcStatementParser,
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
-    private val categorizationEngine: CategorizationEngine
+    private val categorizationEngine: CategorizationEngine,
+    @ApplicationContext private val applicationContext: Context
 ) : ViewModel() {
     
     companion object {
@@ -35,6 +39,8 @@ class PdfImportViewModel @Inject constructor(
     private val _state = MutableStateFlow(PdfImportState())
     val state: StateFlow<PdfImportState> = _state.asStateFlow()
     
+    private var currentUri: Uri? = null
+    
     /**
      * Parse PDF file and extract transactions
      */
@@ -42,6 +48,9 @@ class PdfImportViewModel @Inject constructor(
         try {
             Log.d(TAG, "Starting PDF parsing")
             _state.value = _state.value.copy(isLoading = true, error = null)
+            
+            // Store URI for potential retry with password
+            currentUri = uri
             
             // Parse PDF
             val transactions = pdfParser.parsePdf(context, uri)
@@ -99,7 +108,72 @@ class PdfImportViewModel @Inject constructor(
                 error = "Unexpected error: ${e.message}"
             )
         }
+        }
     }
+    
+    /**
+     * Submit password for encrypted PDF
+     */
+    fun submitPassword(password: String) = viewModelScope.launch {
+        val uri = currentUri
+        if (uri == null) {
+            _state.value = _state.value.copy(
+                error = "File not found. Please select file again."
+            )
+            return@launch
+        }
+
+        try {
+            _state.value = _state.value.copy(isLoading = true, error = null, showPasswordDialog = false)
+            
+            val transactions = pdfParser.parsePdf(applicationContext, uri, password)
+            
+            if (transactions.isEmpty()) {
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = "No transactions found in PDF"
+                )
+                return@launch
+            }
+
+            // Apply categorization
+            val categorizedTransactions = transactions.map { pdfTx ->
+                val categoryId = categorizationEngine.categorize(pdfTx.description)
+                pdfTx.copy(suggestedCategoryId = categoryId)
+            }
+            
+            val transactionsWithDuplicates = detectDuplicates(categorizedTransactions)
+            
+            _state.value = _state.value.copy(
+                isLoading = false,
+                pdfTransactions = transactionsWithDuplicates,
+                selectedCount = transactionsWithDuplicates.count { it.isSelected },
+                totalAmount = calculateTotalAmount(transactionsWithDuplicates),
+                showPasswordDialog = false
+            )
+
+        } catch (e: PdfInvalidPasswordException) {
+            _state.value = _state.value.copy(
+                isLoading = false,
+                showPasswordDialog = true,
+                error = "Incorrect password"
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing with password", e)
+            _state.value = _state.value.copy(
+                isLoading = false,
+                error = e.message ?: "Failed to parse PDF"
+            )
+        }
+    }
+    
+    /**
+     * Dismiss password dialog
+     */
+    fun dismissPasswordDialog() {
+        _state.value = _state.value.copy(showPasswordDialog = false)
+    }
+    
     
     /**
      * Toggle selection of a transaction
@@ -246,5 +320,6 @@ data class PdfImportState(
     val error: String? = null,
     val importSuccess: Boolean = false,
     val importedCount: Int = 0,
-    val importMessage: String? = null
+    val importMessage: String? = null,
+    val showPasswordDialog: Boolean = false
 )
