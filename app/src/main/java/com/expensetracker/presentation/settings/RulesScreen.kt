@@ -120,21 +120,23 @@ fun RulesScreen(
                         label = { Text("All") }
                     )
                     
-                    // Category chips
-                    categories.forEachIndexed { index, category ->
-                        FilterChip(
-                            selected = selectedTabIndex == index + 1,
-                            onClick = { selectedTabIndex = index + 1 },
-                            label = { Text(category.name) }
-                        )
-                    }
+                    // Category chips (excluding "Others")
+                    categories.filter { !it.name.equals("Others", ignoreCase = true) }
+                        .forEachIndexed { index, category ->
+                            FilterChip(
+                                selected = selectedTabIndex == index + 1,
+                                onClick = { selectedTabIndex = index + 1 },
+                                label = { Text(category.name) }
+                            )
+                        }
                 }
                 
                 // Filter rules based on selected tab
+                val filteredCategories = categories.filter { !it.name.equals("Others", ignoreCase = true) }
                 val filteredRules = if (selectedTabIndex == 0) {
                     rules // Show all rules
                 } else {
-                    val selectedCategory = categories.getOrNull(selectedTabIndex - 1)
+                    val selectedCategory = filteredCategories.getOrNull(selectedTabIndex - 1)
                     rules.filter { it.categoryId == selectedCategory?.id }
                 }
                 
