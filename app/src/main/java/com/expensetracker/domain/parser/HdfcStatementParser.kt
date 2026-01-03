@@ -50,18 +50,26 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                     throw PdfPasswordRequiredException()
                 }
                 
-                // Try to decrypt with provided password
+                // Try to decrypt with provided password using PDFBox API
                 try {
-                    val decrypted = document.decrypt(password)
-                    if (!decrypted) {
+                    val decryptionMaterial = com.tom_roush.pdfbox.pdmodel.encryption.StandardDecryptionMaterial(password)
+                    document.openProtection(decryptionMaterial)
+                    
+                    // Check if decryption was successful by trying to access the document
+                    if (document.isEncrypted) {
+                        // Still encrypted after attempting to decrypt = wrong password
                         document.close()
                         inputStream.close()
                         throw PdfInvalidPasswordException()
                     }
+                    
                     Log.d(TAG, "PDF successfully decrypted")
+                } catch (e: PdfInvalidPasswordException) {
+                    throw e
                 } catch (e: Exception) {
                     document.close()
                     inputStream.close()
+                    Log.e(TAG, "Decryption failed", e)
                     throw PdfInvalidPasswordException("Failed to decrypt PDF: ${e.message}")
                 }
             }
