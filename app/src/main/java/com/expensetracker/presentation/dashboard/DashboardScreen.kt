@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.expensetracker.data.local.entity.Transaction
 import com.expensetracker.presentation.theme.getCategoryColor
 import com.expensetracker.util.CurrencyUtils
 import com.expensetracker.util.DateUtils
