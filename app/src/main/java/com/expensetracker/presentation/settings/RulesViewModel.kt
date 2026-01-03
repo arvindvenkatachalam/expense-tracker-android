@@ -44,12 +44,14 @@ class RulesViewModel @Inject constructor(
     
     fun addRule(rule: Rule, recategorize: Boolean = true) = viewModelScope.launch {
         try {
-            val id = ruleDao.insertRule(rule)
+            // Trim pattern to avoid whitespace issues
+            val trimmedRule = rule.copy(pattern = rule.pattern.trim())
+            val id = ruleDao.insertRule(trimmedRule)
             Log.d(TAG, "Rule added with ID: $id")
             
             // Recategorize matching transactions if requested
             if (recategorize) {
-                val count = recategorizeMatchingTransactions(rule)
+                val count = recategorizeMatchingTransactions(trimmedRule)
                 if (count > 0) {
                     _recategorizeMessage.value = "Recategorized $count transaction${if (count == 1) "" else "s"}"
                 }
@@ -166,13 +168,17 @@ class RulesViewModel @Inject constructor(
         // Update category for matching transactions
         var updateCount = 0
         matchingTransactions.forEach { transaction ->
-            val updated = transaction.copy(
-                categoryId = rule.categoryId,
-                isManuallyEdited = false  // Reset manual edit flag
-            )
-            transactionDao.updateTransaction(updated)
-            updateCount++
-            Log.d(TAG, "Updated transaction ${transaction.id}: ${transaction.categoryId} -> ${rule.categoryId}")
+            // Skip manually edited transactions and those that already have the correct category
+            if (!transaction.isManuallyEdited && transaction.categoryId != rule.categoryId) {
+                val updated = transaction.copy(
+                    categoryId = rule.categoryId
+                    // Do NOT reset isManuallyEdited here, as it's already false (checked above)
+                    // and this is an automatic system update.
+                )
+                transactionDao.updateTransaction(updated)
+                updateCount++
+                Log.d(TAG, "Updated transaction ${transaction.id}: ${transaction.categoryId} -> ${rule.categoryId}")
+            }
         }
         
         Log.d(TAG, "Successfully recategorized $updateCount transactions for rule: ${rule.pattern}")
