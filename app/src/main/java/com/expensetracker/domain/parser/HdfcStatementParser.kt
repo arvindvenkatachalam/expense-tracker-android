@@ -74,6 +74,10 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             transactions
             
         } catch (e: Exception) {
+            // Propagate password exceptions directly
+            if (e is PdfPasswordRequiredException || e is PdfInvalidPasswordException) {
+                throw e
+            }
             Log.e(TAG, "Error parsing PDF", e)
             throw PdfParsingException("Failed to parse PDF: ${e.message}", e)
         }
