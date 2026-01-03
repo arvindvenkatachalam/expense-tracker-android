@@ -5,11 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.expensetracker.data.local.entity.Category
 import com.expensetracker.data.local.entity.Transaction
 import com.expensetracker.data.repository.ExpenseRepository
-import com.expensetracker.util.TimePeriod
-import com.expensetracker.util.getTimeRange
+import com.expensetracker.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 
 data class CategoryExpense(
@@ -23,7 +23,9 @@ data class DashboardUiState(
     val totalExpenses: Double = 0.0,
     val categoryExpenses: List<CategoryExpense> = emptyList(),
     val recentTransactions: List<Transaction> = emptyList(),
-    val selectedPeriod: TimePeriod = TimePeriod.THIS_MONTH,
+    val selectedYear: Int = Calendar.getInstance().get(Calendar.YEAR),
+    val selectedMonth: Int = Calendar.getInstance().get(Calendar.MONTH),
+    val selectedDate: Int? = Calendar.getInstance().get(Calendar.DAY_OF_MONTH),
     val isLoading: Boolean = true
 )
 
@@ -32,10 +34,20 @@ class DashboardViewModel @Inject constructor(
     private val repository: ExpenseRepository
 ) : ViewModel() {
     
-    private val _selectedPeriod = MutableStateFlow(TimePeriod.THIS_MONTH)
+    // Current date as default
+    private val currentCalendar = Calendar.getInstance()
+    private val _selectedYear = MutableStateFlow(currentCalendar.get(Calendar.YEAR))
+    private val _selectedMonth = MutableStateFlow(currentCalendar.get(Calendar.MONTH))
+    private val _selectedDate = MutableStateFlow<Int?>(currentCalendar.get(Calendar.DAY_OF_MONTH))
     private val _refreshTrigger = MutableStateFlow(0L)
     
-    private val timeRange = _selectedPeriod.map { it.getTimeRange() }
+    private val timeRange = combine(_selectedYear, _selectedMonth, _selectedDate) { year, month, date ->
+        if (date != null) {
+            DateUtils.getDateRange(year, month, date)
+        } else {
+            DateUtils.getMonthRange(year, month)
+        }
+    }
     
     private val transactions = combine(timeRange, _refreshTrigger) { range, _ ->
         range
@@ -48,8 +60,10 @@ class DashboardViewModel @Inject constructor(
     val uiState: StateFlow<DashboardUiState> = combine(
         transactions,
         categories,
-        _selectedPeriod
-    ) { trans, cats, period ->
+        _selectedYear,
+        _selectedMonth,
+        _selectedDate
+    ) { trans, cats, year, month, date ->
         val debitTransactions = trans.filter { it.transactionType == "DEBIT" }
         val totalExpenses = debitTransactions.sumOf { it.amount }
         
@@ -73,7 +87,9 @@ class DashboardViewModel @Inject constructor(
             totalExpenses = totalExpenses,
             categoryExpenses = categoryExpenses,
             recentTransactions = debitTransactions.take(5),
-            selectedPeriod = period,
+            selectedYear = year,
+            selectedMonth = month,
+            selectedDate = date,
             isLoading = false
         )
     }.stateIn(
@@ -82,8 +98,27 @@ class DashboardViewModel @Inject constructor(
         initialValue = DashboardUiState()
     )
     
-    fun selectPeriod(period: TimePeriod) {
-        _selectedPeriod.value = period
+    
+    fun selectDate(date: Int?) {
+        _selectedDate.value = date
+    }
+    
+    fun goToPreviousMonth() {
+        val calendar = Calendar.getInstance()
+        calendar.set(_selectedYear.value, _selectedMonth.value, 1)
+        calendar.add(Calendar.MONTH, -1)
+        _selectedYear.value = calendar.get(Calendar.YEAR)
+        _selectedMonth.value = calendar.get(Calendar.MONTH)
+        _selectedDate.value = null // Reset to show entire month
+    }
+    
+    fun goToNextMonth() {
+        val calendar = Calendar.getInstance()
+        calendar.set(_selectedYear.value, _selectedMonth.value, 1)
+        calendar.add(Calendar.MONTH, 1)
+        _selectedYear.value = calendar.get(Calendar.YEAR)
+        _selectedMonth.value = calendar.get(Calendar.MONTH)
+        _selectedDate.value = null // Reset to show entire month
     }
     
     /**

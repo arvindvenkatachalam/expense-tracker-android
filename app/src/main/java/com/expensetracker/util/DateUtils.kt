@@ -68,6 +68,60 @@ object DateUtils {
         val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
         return sdf.format(Date(timestamp))
     }
+    
+    /**
+     * Get all dates in a given month
+     */
+    fun getDaysInMonth(year: Int, month: Int): List<Int> {
+        val calendar = Calendar.getInstance()
+        calendar.set(year, month, 1)
+        val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        return (1..daysInMonth).toList()
+    }
+    
+    /**
+     * Format month and year (e.g., "January 2024")
+     */
+    fun formatMonthYear(year: Int, month: Int): String {
+        val calendar = Calendar.getInstance()
+        calendar.set(year, month, 1)
+        val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+        return sdf.format(calendar.time)
+    }
+    
+    /**
+     * Get time range for a specific month
+     */
+    fun getMonthRange(year: Int, month: Int): Pair<Long, Long> {
+        val calendar = Calendar.getInstance()
+        calendar.set(year, month, 1, 0, 0, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfMonth = calendar.timeInMillis
+        
+        calendar.add(Calendar.MONTH, 1)
+        calendar.add(Calendar.MILLISECOND, -1)
+        val endOfMonth = calendar.timeInMillis
+        
+        return Pair(startOfMonth, endOfMonth)
+    }
+    
+    /**
+     * Get time range for a specific date
+     */
+    fun getDateRange(year: Int, month: Int, day: Int): Pair<Long, Long> {
+        val calendar = Calendar.getInstance()
+        calendar.set(year, month, day, 0, 0, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfDay = calendar.timeInMillis
+        
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endOfDay = calendar.timeInMillis
+        
+        return Pair(startOfDay, endOfDay)
+    }
 }
 
 enum class TimePeriod {

@@ -2,12 +2,16 @@ package com.expensetracker.presentation.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +26,6 @@ import com.expensetracker.data.local.entity.Transaction
 import com.expensetracker.presentation.theme.getCategoryColor
 import com.expensetracker.util.CurrencyUtils
 import com.expensetracker.util.DateUtils
-import com.expensetracker.util.TimePeriod
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,11 +69,15 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Time Period Selector
+                // Month and Date Selector
                 item {
-                    TimePeriodSelector(
-                        selectedPeriod = uiState.selectedPeriod,
-                        onPeriodSelected = { viewModel.selectPeriod(it) }
+                    MonthDateSelector(
+                        selectedYear = uiState.selectedYear,
+                        selectedMonth = uiState.selectedMonth,
+                        selectedDate = uiState.selectedDate,
+                        onPreviousMonth = { viewModel.goToPreviousMonth() },
+                        onNextMonth = { viewModel.goToNextMonth() },
+                        onDateSelected = { viewModel.selectDate(it) }
                     )
                 }
                 
@@ -485,5 +492,94 @@ fun TransactionEditDialog(
                 }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MonthDateSelector(
+    selectedYear: Int,
+    selectedMonth: Int,
+    selectedDate: Int?,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onDateSelected: (Int?) -> Unit
+) {
+    val currentCalendar = java.util.Calendar.getInstance()
+    val currentYear = currentCalendar.get(java.util.Calendar.YEAR)
+    val currentMonth = currentCalendar.get(java.util.Calendar.MONTH)
+    val currentDay = currentCalendar.get(java.util.Calendar.DAY_OF_MONTH)
+    
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Month selector with arrows
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onPreviousMonth) {
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Default.ArrowBack,
+                    contentDescription = "Previous Month"
+                )
+            }
+            
+            Text(
+                text = com.expensetracker.util.DateUtils.formatMonthYear(selectedYear, selectedMonth),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            IconButton(onClick = onNextMonth) {
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Default.ArrowForward,
+                    contentDescription = "Next Month"
+                )
+            }
+        }
+        
+        // Date tabs
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // "All" chip to show entire month
+            FilterChip(
+                selected = selectedDate == null,
+                onClick = { onDateSelected(null) },
+                label = { Text("All") }
+            )
+            
+            // Date chips for each day in the month
+            val daysInMonth = com.expensetracker.util.DateUtils.getDaysInMonth(selectedYear, selectedMonth)
+            daysInMonth.forEach { day ->
+                val isToday = selectedYear == currentYear && 
+                             selectedMonth == currentMonth && 
+                             day == currentDay
+                
+                FilterChip(
+                    selected = selectedDate == day,
+                    onClick = { onDateSelected(day) },
+                    label = { 
+                        Text(
+                            text = day.toString(),
+                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    colors = if (isToday && selectedDate != day) {
+                        FilterChipDefaults.filterChipColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        )
+                    } else {
+                        FilterChipDefaults.filterChipColors()
+                    }
+                )
+            }
+        }
     }
 }
