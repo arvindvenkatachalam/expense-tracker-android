@@ -29,7 +29,6 @@ fun RuleEditorDialog(
     }
     var pattern by remember { mutableStateOf(rule?.pattern ?: "") }
     var selectedMatchType by remember { mutableStateOf(rule?.matchType ?: MatchType.CONTAINS) }
-    var priority by remember { mutableIntStateOf(rule?.priority ?: 0) }
     var isActive by remember { mutableStateOf(rule?.isActive ?: true) }
     
     // Test pattern state
@@ -124,15 +123,6 @@ fun RuleEditorDialog(
                     }
                 }
                 
-                // Priority Input
-                OutlinedTextField(
-                    value = priority.toString(),
-                    onValueChange = { priority = it.toIntOrNull() ?: 0 },
-                    label = { Text("Priority") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
                 // Active Toggle
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -202,7 +192,7 @@ fun RuleEditorDialog(
                             categoryId = selectedCategoryId,
                             pattern = pattern.trim(),
                             matchType = selectedMatchType,
-                            priority = priority,
+                            priority = 0,
                             isActive = isActive
                         )
                         onSave(newRule)
