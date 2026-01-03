@@ -103,24 +103,28 @@ fun RulesScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                // Category Tabs
-                ScrollableTabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    modifier = Modifier.fillMaxWidth()
+                // Category Filter Chips (matching Dashboard design)
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // "All" tab
-                    Tab(
-                        selected = selectedTabIndex == 0,
-                        onClick = { selectedTabIndex = 0 },
-                        text = { Text("All") }
-                    )
+                    // "All" chip
+                    item {
+                        FilterChip(
+                            selected = selectedTabIndex == 0,
+                            onClick = { selectedTabIndex = 0 },
+                            label = { Text("All") }
+                        )
+                    }
                     
-                    // Category tabs
-                    categories.forEachIndexed { index, category ->
-                        Tab(
+                    // Category chips
+                    itemsIndexed(categories) { index, category ->
+                        FilterChip(
                             selected = selectedTabIndex == index + 1,
                             onClick = { selectedTabIndex = index + 1 },
-                            text = { Text(category.name) }
+                            label = { Text(category.name) }
                         )
                     }
                 }
