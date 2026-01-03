@@ -171,6 +171,36 @@ fun DashboardScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePeriodSelector(
+    selectedPeriod: com.expensetracker.util.TimePeriod,
+    onPeriodSelected: (com.expensetracker.util.TimePeriod) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        com.expensetracker.util.TimePeriod.values().filter { it != com.expensetracker.util.TimePeriod.CUSTOM }.forEach { period ->
+            FilterChip(
+                selected = selectedPeriod == period,
+                onClick = { onPeriodSelected(period) },
+                label = {
+                    Text(
+                        when (period) {
+                            com.expensetracker.util.TimePeriod.TODAY -> "Today"
+                            com.expensetracker.util.TimePeriod.THIS_WEEK -> "This Week"
+                            com.expensetracker.util.TimePeriod.THIS_MONTH -> "This Month"
+                            else -> ""
+                        }
+                    )
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
 
 @Composable
 fun TotalExpensesCard(totalExpenses: Double) {
