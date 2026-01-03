@@ -44,6 +44,9 @@ fun RulesScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     
+    // Tab state for category filtering
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    
     // Show recategorization feedback
     LaunchedEffect(recategorizeMessage) {
         recategorizeMessage?.let { message ->
@@ -95,42 +98,74 @@ fun RulesScreen(
                 }
             }
         } else {
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(padding)
             ) {
-                // Group rules by category
-                val rulesByCategory = rules.groupBy { it.categoryId }
-                
-                rulesByCategory.forEach { (categoryId, categoryRules) ->
-                    val category = categories.find { it.id == categoryId }
+                // Category Tabs
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // "All" tab
+                    Tab(
+                        selected = selectedTabIndex == 0,
+                        onClick = { selectedTabIndex = 0 },
+                        text = { Text("All") }
+                    )
                     
-                    item {
-                        Text(
-                            text = category?.name ?: "Unknown Category",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                    // Category tabs
+                    categories.forEachIndexed { index, category ->
+                        Tab(
+                            selected = selectedTabIndex == index + 1,
+                            onClick = { selectedTabIndex = index + 1 },
+                            text = { Text(category.name) }
                         )
                     }
-                    
-                    items(categoryRules) { rule ->
-                        RuleCard(
-                            rule = rule,
-                            onEdit = {
-                                editingRule = rule
-                                showEditorDialog = true
-                            },
-                            onDelete = {
-                                showDeleteConfirmation = rule
-                            },
-                            onToggleActive = {
-                                viewModel.updateRule(rule.copy(isActive = !rule.isActive))
-                            }
+                }
+                
+                // Filter rules based on selected tab
+                val filteredRules = if (selectedTabIndex == 0) {
+                    rules // Show all rules
+                } else {
+                    val selectedCategory = categories.getOrNull(selectedTabIndex - 1)
+                    rules.filter { it.categoryId == selectedCategory?.id }
+                }
+                
+                // Rules list
+                if (filteredRules.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (selectedTabIndex == 0) "No rules yet" else "No rules for this category",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filteredRules) { rule ->
+                            RuleCard(
+                                rule = rule,
+                                onEdit = {
+                                    editingRule = rule
+                                    showEditorDialog = true
+                                },
+                                onDelete = {
+                                    showDeleteConfirmation = rule
+                                },
+                                onToggleActive = {
+                                    viewModel.updateRule(rule.copy(isActive = !rule.isActive))
+                                }
+                            )
+                        }
                     }
                 }
             }
