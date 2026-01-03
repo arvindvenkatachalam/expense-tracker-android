@@ -168,9 +168,6 @@ fun MainScreen() {
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onBackClick = { navController.popBackStack() },
-                    onManageRulesClick = {
-                        navController.navigate(Screen.Rules.route)
-                    },
                     onPdfImportClick = {
                         navController.navigate(Screen.PdfImport.route)
                     }

@@ -23,7 +23,6 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
-    onManageRulesClick: () -> Unit,
     onPdfImportClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -113,44 +112,6 @@ fun SettingsScreen(
                 }
             }
             
-            item {
-                Text(
-                    text = "Categorization",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                )
-            }
-            
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onManageRulesClick
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Manage Rules",
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Create patterns to auto-categorize transactions",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null
-                        )
-                    }
-                }
             }
             
             item {
