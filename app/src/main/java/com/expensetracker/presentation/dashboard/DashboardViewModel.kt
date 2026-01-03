@@ -86,7 +86,7 @@ class DashboardViewModel @Inject constructor(
         DashboardUiState(
             totalExpenses = totalExpenses,
             categoryExpenses = categoryExpenses,
-            recentTransactions = debitTransactions.take(5),
+            recentTransactions = debitTransactions,
             selectedYear = year,
             selectedMonth = month,
             selectedDate = date,
