@@ -51,42 +51,35 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             val inputStream = context.contentResolver.openInputStream(uri)
                 ?: throw PdfParsingException("Cannot open PDF file")
             
-            // First, try to load the PDF to check if it's encrypted
-            val document = try {
-                PDDocument.load(inputStream)
-            } catch (e: Exception) {
-                inputStream.close()
-                // If loading fails and we don't have a password, it might be encrypted
-                if (password == null && e.message?.contains("encrypted", ignoreCase = true) == true) {
-                    throw PdfPasswordRequiredException("This PDF is password protected. Please enter your Customer ID.")
-                }
-                throw PdfParsingException("Cannot open PDF file: ${e.message}", e)
-            }
+            val document = PDDocument.load(inputStream)
             
             // Check if PDF is encrypted
             if (document.isEncrypted) {
-                Log.d(TAG, "PDF is encrypted")
-                document.close()
-                inputStream.close()
+                Log.d(TAG, "PDF is encrypted, attempting to decrypt")
                 
                 if (password == null) {
+                    document.close()
+                    inputStream.close()
                     throw PdfPasswordRequiredException("This PDF is password protected. Please enter your Customer ID.")
                 }
                 
-                // Reload with password
+                // Close the current document and reload with password
+                document.close()
+                inputStream.close()
+                
+                // Reopen with password
                 val inputStream2 = context.contentResolver.openInputStream(uri)
                     ?: throw PdfParsingException("Cannot open PDF file")
                 
                 val decryptedDocument = try {
-                    Log.d(TAG, "Attempting to load encrypted PDF with password")
                     PDDocument.load(inputStream2, password)
                 } catch (e: Exception) {
                     inputStream2.close()
-                    Log.e(TAG, "Failed to decrypt PDF: ${e.message}", e)
-                    throw PdfInvalidPasswordException("Incorrect password. Please check your Customer ID and try again.")
+                    Log.e(TAG, "Decryption error: ${e.javaClass.simpleName} - ${e.message}", e)
+                    throw PdfInvalidPasswordException("Failed to decrypt PDF. Please check your password.")
                 }
                 
-                // Verify decryption was successful
+                // Check if still encrypted after decrypt attempt
                 if (decryptedDocument.isEncrypted) {
                     decryptedDocument.close()
                     inputStream2.close()
@@ -95,7 +88,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 
                 Log.d(TAG, "PDF decrypted successfully")
                 
-                // Process the decrypted document
+                // Extract text from decrypted document
                 val stripper = PDFTextStripper()
                 val text = stripper.getText(decryptedDocument)
                 decryptedDocument.close()
@@ -112,8 +105,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 return@withContext transactions
             }
             
-            Log.d(TAG, "PDF is not encrypted, processing normally")
-            
+            // PDF is not encrypted, process normally
             val stripper = PDFTextStripper()
             val text = stripper.getText(document)
             document.close()
