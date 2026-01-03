@@ -11,8 +11,10 @@ import com.expensetracker.data.local.entity.MatchType
 import com.expensetracker.data.local.entity.Rule
 import com.expensetracker.domain.usecase.CategorizationEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -37,14 +39,20 @@ class RulesViewModel @Inject constructor(
     val categories: StateFlow<List<Category>> = categoryDao.getAllCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     
-    fun addRule(rule: Rule, recategorize: Boolean = false) = viewModelScope.launch {
+    private val _recategorizeMessage = MutableStateFlow<String?>(null)
+    val recategorizeMessage: StateFlow<String?> = _recategorizeMessage.asStateFlow()
+    
+    fun addRule(rule: Rule, recategorize: Boolean = true) = viewModelScope.launch {
         try {
             val id = ruleDao.insertRule(rule)
             Log.d(TAG, "Rule added with ID: $id")
             
             // Recategorize matching transactions if requested
             if (recategorize) {
-                recategorizeMatchingTransactions(rule)
+                val count = recategorizeMatchingTransactions(rule)
+                if (count > 0) {
+                    _recategorizeMessage.value = "Recategorized $count transaction${if (count == 1) "" else "s"}"
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error adding rule", e)
@@ -128,7 +136,11 @@ class RulesViewModel @Inject constructor(
     }
 }
     
-    private suspend fun recategorizeMatchingTransactions(rule: Rule) {
+    fun clearRecategorizeMessage() {
+        _recategorizeMessage.value = null
+    }
+    
+    private suspend fun recategorizeMatchingTransactions(rule: Rule): Int {
     try {
         Log.d(TAG, "=== RECATEGORIZE MATCHING TRANSACTIONS START ===")
         Log.d(TAG, "Rule pattern: '${rule.pattern}', matchType: ${rule.matchType}, targetCategory: ${rule.categoryId}")
@@ -162,9 +174,11 @@ class RulesViewModel @Inject constructor(
         
         Log.d(TAG, "Successfully recategorized $updateCount transactions for rule: ${rule.pattern}")
         Log.d(TAG, "=== RECATEGORIZE MATCHING TRANSACTIONS END ===")
+        return updateCount
     } catch (e: Exception) {
         Log.e(TAG, "Error recategorizing transactions: ${e.message}", e)
         e.printStackTrace()
+        return 0
     }
     }
 }

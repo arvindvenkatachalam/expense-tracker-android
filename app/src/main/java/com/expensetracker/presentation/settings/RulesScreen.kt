@@ -30,6 +30,7 @@ fun RulesScreen(
     
     val rules by viewModel.rules.collectAsState()
     val categories by viewModel.categories.collectAsState()
+    val recategorizeMessage by viewModel.recategorizeMessage.collectAsState()
     
     var showEditorDialog by remember { mutableStateOf(false) }
     var editingRule by remember { mutableStateOf<Rule?>(null) }
@@ -43,6 +44,14 @@ fun RulesScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    
+    // Show recategorization feedback
+    LaunchedEffect(recategorizeMessage) {
+        recategorizeMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearRecategorizeMessage()
+        }
+    }
 
     Scaffold(
         topBar = {
