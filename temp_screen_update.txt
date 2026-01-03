@@ -1,0 +1,124 @@
+package com.expensetracker.presentation.pdfimport
+
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.expensetracker.data.model.PdfTransaction
+import java.text.SimpleDateFormat
+import java.util.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PdfImportScreen(
+    onBackClick: () -> Unit,
+    onImportSuccess: () -> Unit,
+    viewModel: PdfImportViewModel = hiltViewModel()
+) {
+    val context = LocalContext.current
+    val state by viewModel.state.collectAsState()
+    
+    // File picker launcher
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            viewModel.parsePdf(context, it)
+        }
+    }
+    
+    // Handle import success
+    LaunchedEffect(state.importSuccess) {
+        if (state.importSuccess) {
+            // Show success message with details
+            android.widget.Toast.makeText(
+                context,
+                state.importMessage ?: "Import successful!",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            
+            // Small delay to ensure database Flow updates propagate
+            kotlinx.coroutines.delay(1000)
+            onImportSuccess()
+        }
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Import from PDF") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.Default.ArrowBack, "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            when {
+                state.isLoading -> {
+                    LoadingView()
+                }
+                state.error != null -> {
+                    ErrorView(
+                        error = state.error!!,
+                        onRetry = { filePickerLauncher.launch("application/pdf") }
+                    )
+                }
+                state.pdfTransactions.isEmpty() -> {
+                    EmptyView(
+                        onSelectFile = { filePickerLauncher.launch("application/pdf") }
+                    )
+                }
+                else -> {
+                    TransactionReviewView(
+                        transactions = state.pdfTransactions,
+                        selectedCount = state.selectedCount,
+                        totalAmount = state.totalAmount,
+                        onToggleTransaction = { index -> viewModel.toggleTransaction(index) },
+                        onSelectAll = { viewModel.selectAll() },
+                        onDeselectAll = { viewModel.deselectAll() },
+                        onImport = { viewModel.importSelected() }
+                    )
+                }
+            }
+        }
+    }
+    
+    // Password Dialog
+    if (state.showPasswordDialog) {
+        PasswordDialog(
+            onDismiss = { viewModel.cancelPasswordDialog() },
+            onSubmit = { password -> viewModel.submitPassword(password) },
+            error = state.passwordError
+        )
+    }
+}

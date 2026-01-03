@@ -1,0 +1,202 @@
+package com.expensetracker
+
+import android.Manifest
+import android.content.Intent
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Rule
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.expensetracker.presentation.dashboard.DashboardScreen
+import com.expensetracker.presentation.analysis.CategoryAnalysisScreen
+import com.expensetracker.presentation.rules.RulesScreen
+import com.expensetracker.presentation.settings.SettingsScreen
+import com.expensetracker.presentation.theme.ExpenseTrackerTheme
+import com.expensetracker.service.TransactionService
+import dagger.hilt.android.AndroidEntryPoint
+
+sealed class Screen(val route: String, val title: String) {
+    object Dashboard : Screen("dashboard", "Dashboard")
+    object Rules : Screen("rules", "Rules")
+    object Settings : Screen("settings", "Settings")
+    object ManageRules : Screen("manage_rules", "Manage Rules")
+    object Analysis : Screen("analysis", "Category Analysis")
+    object PdfImport : Screen("pdf_import", "Import from PDF")
+}
+
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            startMonitoringService()
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        requestPermissions()
+        setContent {
+            ExpenseTrackerTheme {
+                MainScreen()
+            }
+        }
+    }
+
+    private fun requestPermissions() {
+        val permissions = mutableListOf(
+            Manifest.permission.READ_SMS,
+            Manifest.permission.RECEIVE_SMS
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        permissionLauncher.launch(permissions.toTypedArray())
+    }
+
+    private fun startMonitoringService() {
+        val intent = Intent(this, TransactionService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen() {
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    val bottomNavItems = listOf(
+        Screen.Dashboard,
+        Screen.Rules
+    )
+
+    Scaffold(
+        bottomBar = {
+            if (currentDestination?.route in bottomNavItems.map { it.route }) {
+                NavigationBar {
+                    bottomNavItems.forEach { screen ->
+                        NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    when (screen) {
+                                        Screen.Dashboard -> Icons.Default.Dashboard
+                                        Screen.Rules -> Icons.Default.Rule
+                                        else -> Icons.Default.Dashboard
+                                    },
+                                    contentDescription = screen.title
+                                )
+                            },
+                            label = { Text(screen.title) },
+                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        )
+                    }
+                    NavigationBarItem(
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Settings"
+                            )
+                        },
+                        label = { Text("Settings") },
+                        selected = currentDestination?.hierarchy?.any { it.route == Screen.Settings.route } == true,
+                        onClick = {
+                            navController.navigate(Screen.Settings.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Dashboard.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(Screen.Dashboard.route) {
+                DashboardScreen(
+                    onCategoryClick = { categoryId ->
+                        // TODO: Navigate to category details
+                    },
+                    onSettingsClick = {
+                        navController.navigate(Screen.Settings.route)
+                    },
+                    onAnalysisClick = {
+                        navController.navigate(Screen.Analysis.route)
+                    }
+                )
+            }
+            composable(Screen.Rules.route) {
+                RulesScreen()
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onManageRulesClick = {
+                        navController.navigate(Screen.ManageRules.route)
+                    },
+                    onPdfImportClick = {
+                        navController.navigate(Screen.PdfImport.route)
+                    }
+                )
+            }
+            composable(Screen.ManageRules.route) {
+                com.expensetracker.presentation.settings.RulesScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+            
+            composable(Screen.Analysis.route) {
+                CategoryAnalysisScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+            
+            composable(Screen.PdfImport.route) {
+                com.expensetracker.presentation.pdfimport.PdfImportScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onImportSuccess = { 
+                        // Pop back to Dashboard and ensure it's at the top
+                        navController.popBackStack(Screen.Dashboard.route, inclusive = false)
+                    }
+                )
+            }
+        }
+    }
+}
