@@ -11,10 +11,8 @@ import com.expensetracker.data.local.entity.MatchType
 import com.expensetracker.data.local.entity.Rule
 import com.expensetracker.domain.usecase.CategorizationEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -39,9 +37,6 @@ class RulesViewModel @Inject constructor(
     val categories: StateFlow<List<Category>> = categoryDao.getAllCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     
-    private val _recategorizeMessage = MutableStateFlow<String?>(null)
-    val recategorizeMessage: StateFlow<String?> = _recategorizeMessage.asStateFlow()
-    
     fun addRule(rule: Rule, recategorize: Boolean = true) = viewModelScope.launch {
         try {
             val id = ruleDao.insertRule(rule)
@@ -49,10 +44,7 @@ class RulesViewModel @Inject constructor(
             
             // Recategorize matching transactions if requested
             if (recategorize) {
-                val count = recategorizeMatchingTransactions(rule)
-                if (count > 0) {
-                    _recategorizeMessage.value = "Recategorized $count transaction${if (count == 1) "" else "s"}"
-                }
+                recategorizeMatchingTransactions(rule)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error adding rule", e)
@@ -77,6 +69,9 @@ class RulesViewModel @Inject constructor(
         try {
             ruleDao.deleteRule(rule)
             Log.d(TAG, "Rule deleted: ${rule.pattern}")
+            
+            // Recategorize all transactions to reapply remaining rules
+            recategorizeAllTransactions()
         } catch (e: Exception) {
             Log.e(TAG, "Error deleting rule", e)
         }
@@ -136,11 +131,7 @@ class RulesViewModel @Inject constructor(
     }
 }
     
-    fun clearRecategorizeMessage() {
-        _recategorizeMessage.value = null
-    }
-    
-    private suspend fun recategorizeMatchingTransactions(rule: Rule): Int {
+    private suspend fun recategorizeMatchingTransactions(rule: Rule) {
     try {
         Log.d(TAG, "=== RECATEGORIZE MATCHING TRANSACTIONS START ===")
         Log.d(TAG, "Rule pattern: '${rule.pattern}', matchType: ${rule.matchType}, targetCategory: ${rule.categoryId}")
@@ -174,11 +165,44 @@ class RulesViewModel @Inject constructor(
         
         Log.d(TAG, "Successfully recategorized $updateCount transactions for rule: ${rule.pattern}")
         Log.d(TAG, "=== RECATEGORIZE MATCHING TRANSACTIONS END ===")
-        return updateCount
     } catch (e: Exception) {
         Log.e(TAG, "Error recategorizing transactions: ${e.message}", e)
         e.printStackTrace()
-        return 0
     }
+    }
+    
+    /**
+     * Recategorize all transactions using current rules
+     */
+    suspend fun recategorizeAllTransactions() {
+        try {
+            Log.d(TAG, "=== RECATEGORIZE ALL TRANSACTIONS START ===")
+            
+            // Get all transactions
+            val allTransactions = transactionDao.getAllTransactionsDirect()
+            Log.d(TAG, "Retrieved ${allTransactions.size} total transactions")
+            
+            var recategorizedCount = 0
+            
+            allTransactions.forEach { transaction ->
+                // Skip manually edited transactions
+                if (!transaction.isManuallyEdited) {
+                    val newCategory = categorizationEngine.categorize(transaction.merchant)
+                    
+                    if (newCategory != transaction.categoryId) {
+                        val updated = transaction.copy(categoryId = newCategory)
+                        transactionDao.updateTransaction(updated)
+                        recategorizedCount++
+                        Log.d(TAG, "Recategorized transaction ${transaction.id}: ${transaction.categoryId} -> $newCategory")
+                    }
+                }
+            }
+            
+            Log.d(TAG, "Successfully recategorized $recategorizedCount transactions")
+            Log.d(TAG, "=== RECATEGORIZE ALL TRANSACTIONS END ===")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error recategorizing all transactions: ${e.message}", e)
+            e.printStackTrace()
+        }
     }
 }
