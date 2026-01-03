@@ -87,7 +87,8 @@ fun MainScreen() {
 
     val bottomNavItems = listOf(
         Screen.Dashboard,
-        Screen.Rules
+        Screen.Rules,
+        Screen.Settings
     )
 
     Scaffold(
@@ -101,6 +102,7 @@ fun MainScreen() {
                                     when (screen) {
                                         Screen.Dashboard -> Icons.Default.Dashboard
                                         Screen.Rules -> Icons.Default.Rule
+                                        Screen.Settings -> Icons.Default.Settings
                                         else -> Icons.Default.Dashboard
                                     },
                                     contentDescription = screen.title
@@ -119,25 +121,6 @@ fun MainScreen() {
                             }
                         )
                     }
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Settings"
-                            )
-                        },
-                        label = { Text("Settings") },
-                        selected = currentDestination?.hierarchy?.any { it.route == Screen.Settings.route } == true,
-                        onClick = {
-                            navController.navigate(Screen.Settings.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
                 }
             }
         }
@@ -152,22 +135,16 @@ fun MainScreen() {
                     onCategoryClick = { categoryId ->
                         // TODO: Navigate to category details
                     },
-                    onSettingsClick = {
-                        navController.navigate(Screen.Settings.route)
-                    },
                     onAnalysisClick = {
                         navController.navigate(Screen.Analysis.route)
                     }
                 )
             }
             composable(Screen.Rules.route) {
-                com.expensetracker.presentation.settings.RulesScreen(
-                    onBackClick = { navController.popBackStack() }
-                )
+                com.expensetracker.presentation.settings.RulesScreen()
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
-                    onBackClick = { navController.popBackStack() },
                     onPdfImportClick = {
                         navController.navigate(Screen.PdfImport.route)
                     }

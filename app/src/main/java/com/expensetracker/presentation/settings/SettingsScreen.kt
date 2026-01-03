@@ -22,7 +22,6 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun SettingsScreen(
-    onBackClick: () -> Unit,
     onPdfImportClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -45,12 +44,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                title = { Text("Settings") }
             )
         }
     ) { padding ->

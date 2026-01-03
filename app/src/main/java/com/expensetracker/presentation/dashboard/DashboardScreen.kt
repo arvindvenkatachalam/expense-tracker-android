@@ -28,7 +28,6 @@ import com.expensetracker.util.TimePeriod
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
     onCategoryClick: (Long) -> Unit,
-    onSettingsClick: () -> Unit,
     onAnalysisClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -41,12 +40,7 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Expense Tracker") },
-                actions = {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                }
+                title = { Text("Expense Tracker") }
             )
         }
     ) { padding ->

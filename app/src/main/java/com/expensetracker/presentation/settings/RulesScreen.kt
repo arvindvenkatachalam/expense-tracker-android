@@ -23,7 +23,6 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RulesScreen(
-    onBackClick: () -> Unit,
     viewModel: RulesViewModel = hiltViewModel()
 ) {
     val TAG = "RulesScreen"
@@ -56,12 +55,7 @@ fun RulesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Categorization Rules") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                title = { Text("Categorization Rules") }
             )
         },
         floatingActionButton = {
