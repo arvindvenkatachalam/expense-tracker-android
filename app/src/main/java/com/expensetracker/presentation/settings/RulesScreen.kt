@@ -356,20 +356,10 @@ fun RuleCard(
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        AssistChip(
-                            onClick = {},
-                            label = { Text(rule.matchType.name.replace("_", " ")) }
-                        )
-                        if (rule.priority > 0) {
-                            AssistChip(
-                                onClick = {},
-                                label = { Text("Priority: ${rule.priority}") }
-                            )
-                        }
-                    }
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(rule.matchType.name.replace("_", " ")) }
+                    )
                 }
                 
                 Switch(
