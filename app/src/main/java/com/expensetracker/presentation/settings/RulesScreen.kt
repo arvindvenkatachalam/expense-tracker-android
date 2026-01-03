@@ -1,9 +1,11 @@
 package com.expensetracker.presentation.settings
 
 import android.util.Log
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -104,23 +106,22 @@ fun RulesScreen(
                     .padding(padding)
             ) {
                 // Category Filter Chips (matching Dashboard design)
-                LazyRow(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // "All" chip
-                    item {
-                        FilterChip(
-                            selected = selectedTabIndex == 0,
-                            onClick = { selectedTabIndex = 0 },
-                            label = { Text("All") }
-                        )
-                    }
+                    FilterChip(
+                        selected = selectedTabIndex == 0,
+                        onClick = { selectedTabIndex = 0 },
+                        label = { Text("All") }
+                    )
                     
                     // Category chips
-                    itemsIndexed(categories) { index, category ->
+                    categories.forEachIndexed { index, category ->
                         FilterChip(
                             selected = selectedTabIndex == index + 1,
                             onClick = { selectedTabIndex = index + 1 },
