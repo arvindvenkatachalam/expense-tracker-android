@@ -92,4 +92,25 @@ class DashboardViewModel @Inject constructor(
     fun forceRefresh() {
         _refreshTrigger.value = System.currentTimeMillis()
     }
+    
+    /**
+     * Update a transaction's amount
+     */
+    fun updateTransactionAmount(transaction: Transaction, newAmount: Double) {
+        viewModelScope.launch {
+            val updatedTransaction = transaction.copy(amount = newAmount)
+            repository.updateTransaction(updatedTransaction)
+            forceRefresh()
+        }
+    }
+    
+    /**
+     * Delete a transaction
+     */
+    fun deleteTransaction(transaction: Transaction) {
+        viewModelScope.launch {
+            repository.deleteTransaction(transaction)
+            forceRefresh()
+        }
+    }
 }

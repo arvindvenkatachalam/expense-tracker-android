@@ -32,6 +32,10 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
+    // Transaction edit dialog state
+    var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    
     // Force refresh when screen is displayed (helps after PDF import)
     LaunchedEffect(Unit) {
         viewModel.forceRefresh()
@@ -122,12 +126,40 @@ fun DashboardScreen(
                             ?.category
                         TransactionItem(
                             transaction = transaction,
-                            category = category
+                            category = category,
+                            onClick = {
+                                selectedTransaction = transaction
+                                showEditDialog = true
+                            }
                         )
                     }
                 }
             }
         }
+    }
+    
+    // Transaction Edit Dialog
+    if (showEditDialog && selectedTransaction != null) {
+        TransactionEditDialog(
+            transaction = selectedTransaction!!,
+            category = uiState.categoryExpenses
+                .find { it.category.id == selectedTransaction!!.categoryId }
+                ?.category,
+            onDismiss = {
+                showEditDialog = false
+                selectedTransaction = null
+            },
+            onSave = { newAmount ->
+                viewModel.updateTransactionAmount(selectedTransaction!!, newAmount)
+                showEditDialog = false
+                selectedTransaction = null
+            },
+            onDelete = {
+                viewModel.deleteTransaction(selectedTransaction!!)
+                showEditDialog = false
+                selectedTransaction = null
+            }
+        )
     }
 }
 
@@ -255,10 +287,13 @@ fun CategoryExpenseItem(
 @Composable
 fun TransactionItem(
     transaction: com.expensetracker.data.local.entity.Transaction,
-    category: com.expensetracker.data.local.entity.Category? = null
+    category: com.expensetracker.data.local.entity.Category? = null,
+    onClick: () -> Unit = {}
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -330,5 +365,124 @@ fun EmptyStateCard() {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TransactionEditDialog(
+    transaction: com.expensetracker.data.local.entity.Transaction,
+    category: com.expensetracker.data.local.entity.Category?,
+    onDismiss: () -> Unit,
+    onSave: (Double) -> Unit,
+    onDelete: () -> Unit
+) {
+    var amountText by remember { mutableStateOf(transaction.amount.toString()) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Transaction") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Transaction details
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = transaction.merchant,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (category != null) {
+                            Text(
+                                text = category.name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = DateUtils.formatDateTime(transaction.timestamp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Divider()
+                
+                // Amount input
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    prefix = { Text("₹") }
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val newAmount = amountText.toDoubleOrNull()
+                    if (newAmount != null && newAmount > 0) {
+                        onSave(newAmount)
+                    }
+                },
+                enabled = amountText.toDoubleOrNull() != null && amountText.toDoubleOrNull()!! > 0
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { showDeleteConfirmation = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        }
+    )
+    
+    // Delete confirmation dialog
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Transaction?") },
+            text = { Text("Are you sure you want to delete this transaction? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDelete()
+                        showDeleteConfirmation = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
