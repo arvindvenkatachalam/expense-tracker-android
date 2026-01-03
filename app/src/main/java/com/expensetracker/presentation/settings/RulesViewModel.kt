@@ -52,8 +52,11 @@ class RulesViewModel @Inject constructor(
             // Recategorize matching transactions if requested
             if (recategorize) {
                 val count = recategorizeMatchingTransactions(trimmedRule)
+                 // Show message even if count is 0 to confirm check ran
                 if (count > 0) {
                     _recategorizeMessage.value = "Recategorized $count transaction${if (count == 1) "" else "s"}"
+                } else {
+                     _recategorizeMessage.value = "Rule added. No existing transactions matched."
                 }
             }
         } catch (e: Exception) {
@@ -182,7 +185,14 @@ class RulesViewModel @Inject constructor(
             // 1. Not manually edited
             // 2. OR currently in "Others" (ID 7) - treat as unclassified even if edited
             // AND category is actually changing
-            val isDefaultCategory = transaction.categoryId == 7L
+            // Dynamic lookup for 'Others' category ID (cached in categories flow but safer to find here)
+            // If we can't find it, fallback to 7L but log warning
+            val allCats = categories.value
+            val othersCat = allCats.find { it.name.trim().equals("Others", ignoreCase = true) } 
+                           ?: allCats.find { it.name.trim().equals("Other", ignoreCase = true) }
+            val othersId = othersCat?.id ?: 7L
+
+            val isDefaultCategory = transaction.categoryId == othersId || transaction.categoryId == null
             val shouldUpdate = (!transaction.isManuallyEdited || isDefaultCategory) && transaction.categoryId != rule.categoryId
             
             if (shouldUpdate) {

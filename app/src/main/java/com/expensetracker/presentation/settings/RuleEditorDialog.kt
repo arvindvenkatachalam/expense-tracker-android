@@ -24,7 +24,9 @@ fun RuleEditorDialog(
     onDismiss: () -> Unit,
     onTestPattern: suspend (String, String, MatchType) -> Boolean
 ) {
-    var selectedCategoryId by remember { mutableLongStateOf(rule?.categoryId ?: categories.firstOrNull()?.id ?: 0L) }
+    var selectedCategoryId by remember(rule, categories) { 
+        mutableLongStateOf(rule?.categoryId ?: categories.firstOrNull()?.id ?: 0L) 
+    }
     var pattern by remember { mutableStateOf(rule?.pattern ?: "") }
     var selectedMatchType by remember { mutableStateOf(rule?.matchType ?: MatchType.CONTAINS) }
     var priority by remember { mutableIntStateOf(rule?.priority ?: 0) }
