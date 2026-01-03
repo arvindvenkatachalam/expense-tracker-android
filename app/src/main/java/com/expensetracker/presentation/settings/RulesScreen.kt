@@ -194,8 +194,8 @@ fun RulesScreen(
                             Log.d(TAG, "  showRecategorizeDialogForNewRule = $showRecategorizeDialogForNewRule")
                             Log.d(TAG, "  showEditorDialog = $showEditorDialog")
                         } else {
-                            Log.d(TAG, "Count = 0, adding rule directly without recategorization")
-                            viewModel.addRule(newRule, recategorize = false)
+                            Log.d(TAG, "Count = 0, adding rule directly but requesting recategorization check anyway")
+                            viewModel.addRule(newRule, recategorize = true)
                             snackbarHostState.showSnackbar("✓ Rule added")
                             showEditorDialog = false
                             editingRule = null

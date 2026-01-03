@@ -154,9 +154,19 @@ class RulesViewModel @Inject constructor(
         val allTransactions = transactionDao.getAllTransactionsDirect()
         Log.d(TAG, "Retrieved ${allTransactions.size} total transactions")
         
+        // Helper to normalize strings (remove non-breaking spaces, etc.)
+        fun normalize(s: String): String = s.replace("\u00A0", " ").replace("\\s+".toRegex(), " ").trim()
+        
         // Find transactions that match this rule's pattern
         val matchingTransactions = allTransactions.filter { transaction ->
-            val matches = categorizationEngine.testRule(transaction.merchant, rule.pattern, rule.matchType)
+            // Normalize merchant string for better matching
+            val normalizedMerchant = normalize(transaction.merchant)
+            val normalizedPattern = normalize(rule.pattern)
+            
+            // Try matching with both raw and normalized strings
+            val matches = categorizationEngine.testRule(transaction.merchant, rule.pattern, rule.matchType) ||
+                          categorizationEngine.testRule(normalizedMerchant, normalizedPattern, rule.matchType)
+            
             if (matches) {
                 Log.d(TAG, "Found matching transaction: id=${transaction.id}, merchant='${transaction.merchant}', currentCategory=${transaction.categoryId}")
             }
