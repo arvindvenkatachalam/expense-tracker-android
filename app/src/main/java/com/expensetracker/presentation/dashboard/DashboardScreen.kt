@@ -171,35 +171,6 @@ fun DashboardScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TimePeriodSelector(
-    selectedPeriod: TimePeriod,
-    onPeriodSelected: (TimePeriod) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        TimePeriod.values().filter { it != TimePeriod.CUSTOM }.forEach { period ->
-            FilterChip(
-                selected = selectedPeriod == period,
-                onClick = { onPeriodSelected(period) },
-                label = {
-                    Text(
-                        when (period) {
-                            TimePeriod.TODAY -> "Today"
-                            TimePeriod.THIS_WEEK -> "This Week"
-                            TimePeriod.THIS_MONTH -> "This Month"
-                            else -> ""
-                        }
-                    )
-                },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
 
 @Composable
 fun TotalExpensesCard(totalExpenses: Double) {
