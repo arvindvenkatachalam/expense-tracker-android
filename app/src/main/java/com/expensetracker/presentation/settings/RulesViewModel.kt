@@ -178,16 +178,24 @@ class RulesViewModel @Inject constructor(
         // Update category for matching transactions
         var updateCount = 0
         matchingTransactions.forEach { transaction ->
-            // Skip manually edited transactions and those that already have the correct category
-            if (!transaction.isManuallyEdited && transaction.categoryId != rule.categoryId) {
+            // Allow update if:
+            // 1. Not manually edited
+            // 2. OR currently in "Others" (ID 7) - treat as unclassified even if edited
+            // AND category is actually changing
+            val isDefaultCategory = transaction.categoryId == 7L
+            val shouldUpdate = (!transaction.isManuallyEdited || isDefaultCategory) && transaction.categoryId != rule.categoryId
+            
+            if (shouldUpdate) {
                 val updated = transaction.copy(
-                    categoryId = rule.categoryId
-                    // Do NOT reset isManuallyEdited here, as it's already false (checked above)
-                    // and this is an automatic system update.
+                    categoryId = rule.categoryId,
+                    // Reset manual flag if we are moving OUT of Others automatically
+                    isManuallyEdited = false
                 )
                 transactionDao.updateTransaction(updated)
                 updateCount++
                 Log.d(TAG, "Updated transaction ${transaction.id}: ${transaction.categoryId} -> ${rule.categoryId}")
+            } else {
+                 Log.d(TAG, "Skipped transaction ${transaction.id}: isManuallyEdited=${transaction.isManuallyEdited}, category=${transaction.categoryId}")
             }
         }
         
