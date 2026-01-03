@@ -23,7 +23,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.expensetracker.presentation.dashboard.DashboardScreen
 import com.expensetracker.presentation.analysis.CategoryAnalysisScreen
-import com.expensetracker.presentation.rules.RulesScreen
 import com.expensetracker.presentation.settings.SettingsScreen
 import com.expensetracker.presentation.theme.ExpenseTrackerTheme
 import com.expensetracker.service.TransactionService
@@ -33,7 +32,6 @@ sealed class Screen(val route: String, val title: String) {
     object Dashboard : Screen("dashboard", "Dashboard")
     object Rules : Screen("rules", "Rules")
     object Settings : Screen("settings", "Settings")
-    object ManageRules : Screen("manage_rules", "Manage Rules")
     object Analysis : Screen("analysis", "Category Analysis")
     object PdfImport : Screen("pdf_import", "Import from PDF")
 }
@@ -163,22 +161,19 @@ fun MainScreen() {
                 )
             }
             composable(Screen.Rules.route) {
-                RulesScreen()
+                com.expensetracker.presentation.settings.RulesScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onBackClick = { navController.popBackStack() },
                     onManageRulesClick = {
-                        navController.navigate(Screen.ManageRules.route)
+                        navController.navigate(Screen.Rules.route)
                     },
                     onPdfImportClick = {
                         navController.navigate(Screen.PdfImport.route)
                     }
-                )
-            }
-            composable(Screen.ManageRules.route) {
-                com.expensetracker.presentation.settings.RulesScreen(
-                    onBackClick = { navController.popBackStack() }
                 )
             }
             
