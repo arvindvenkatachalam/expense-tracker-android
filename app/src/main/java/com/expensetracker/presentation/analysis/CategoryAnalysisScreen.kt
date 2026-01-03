@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.expensetracker.presentation.dashboard.CategoryExpense
-import com.expensetracker.presentation.dashboard.TimePeriodSelector
+import com.expensetracker.presentation.dashboard.MonthDateSelector
 import com.expensetracker.presentation.theme.getCategoryColor
 import com.expensetracker.util.CurrencyUtils
 import com.github.mikephil.charting.charts.PieChart
@@ -64,11 +64,15 @@ fun CategoryAnalysisScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Time Period Selector
+                // Month and Date Selector
                 item {
-                    TimePeriodSelector(
-                        selectedPeriod = uiState.selectedPeriod,
-                        onPeriodSelected = { viewModel.selectPeriod(it) }
+                    MonthDateSelector(
+                        selectedYear = uiState.selectedYear,
+                        selectedMonth = uiState.selectedMonth,
+                        selectedDate = uiState.selectedDate,
+                        onPreviousMonth = { viewModel.goToPreviousMonth() },
+                        onNextMonth = { viewModel.goToNextMonth() },
+                        onDateSelected = { viewModel.selectDate(it) }
                     )
                 }
                 
