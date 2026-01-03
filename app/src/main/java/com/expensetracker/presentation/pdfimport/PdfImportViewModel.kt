@@ -109,7 +109,6 @@ class PdfImportViewModel @Inject constructor(
             )
         }
         }
-    }
     
     /**
      * Submit password for encrypted PDF
