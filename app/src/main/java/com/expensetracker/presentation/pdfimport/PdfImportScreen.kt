@@ -107,6 +107,15 @@ fun PdfImportScreen(
             }
         }
     }
+    
+    // Password Dialog
+    if (state.showPasswordDialog) {
+        PasswordDialog(
+            onConfirm = { password -> viewModel.submitPassword(password) },
+            onDismiss = { viewModel.dismissPasswordDialog() },
+            errorMessage = if (state.error?.contains("password", ignoreCase = true) == true) state.error else null
+        )
+    }
 }
 
 @Composable
@@ -355,4 +364,56 @@ private fun TransactionItem(
             )
         }
     }
+}
+
+@Composable
+fun PasswordDialog(
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+    errorMessage: String? = null
+) {
+    var password by remember { mutableStateOf("") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Password Required") },
+        text = {
+            Column {
+                Text("This PDF is password protected.")
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Enter Password") },
+                    singleLine = true,
+                    isError = errorMessage != null,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Password
+                    )
+                )
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(password) },
+                enabled = password.isNotEmpty()
+            ) {
+                Text("Unlock")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

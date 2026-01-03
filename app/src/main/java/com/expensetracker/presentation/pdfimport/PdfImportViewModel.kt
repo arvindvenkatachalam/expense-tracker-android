@@ -72,6 +72,20 @@ class PdfImportViewModel @Inject constructor(
             
             Log.d(TAG, "Successfully parsed ${transactions.size} transactions")
             
+        } catch (e: PdfPasswordRequiredException) {
+            Log.d(TAG, "PDF requires password")
+            _state.value = _state.value.copy(
+                isLoading = false,
+                showPasswordDialog = true,
+                error = null
+            )
+        } catch (e: PdfInvalidPasswordException) {
+            Log.e(TAG, "Invalid password")
+            _state.value = _state.value.copy(
+                isLoading = false,
+                showPasswordDialog = true,
+                error = "Incorrect password. Please try again."
+            )
         } catch (e: PdfParsingException) {
             Log.e(TAG, "PDF parsing failed", e)
             _state.value = _state.value.copy(
