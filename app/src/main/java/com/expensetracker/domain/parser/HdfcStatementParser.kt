@@ -31,7 +31,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         )
     }
     
-    override suspend fun parsePdf(context: Context, uri: Uri): List<PdfTransaction> = withContext(Dispatchers.IO) {
+    override suspend fun parsePdf(context: Context, uri: Uri, password: String?): List<PdfTransaction> = withContext(Dispatchers.IO) {
         try {
             PDFBoxResourceLoader.init(context)
             
@@ -39,6 +39,33 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                 ?: throw PdfParsingException("Cannot open PDF file")
             
             val document = PDDocument.load(inputStream)
+            
+            // Check if PDF is encrypted
+            if (document.isEncrypted) {
+                Log.d(TAG, "PDF is encrypted")
+                
+                if (password == null) {
+                    document.close()
+                    inputStream.close()
+                    throw PdfPasswordRequiredException()
+                }
+                
+                // Try to decrypt with provided password
+                try {
+                    val decrypted = document.decrypt(password)
+                    if (!decrypted) {
+                        document.close()
+                        inputStream.close()
+                        throw PdfInvalidPasswordException()
+                    }
+                    Log.d(TAG, "PDF successfully decrypted")
+                } catch (e: Exception) {
+                    document.close()
+                    inputStream.close()
+                    throw PdfInvalidPasswordException("Failed to decrypt PDF: ${e.message}")
+                }
+            }
+            
             val stripper = PDFTextStripper()
             val text = stripper.getText(document)
             
@@ -55,6 +82,10 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             
             transactions
             
+        } catch (e: PdfPasswordRequiredException) {
+            throw e
+        } catch (e: PdfInvalidPasswordException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing PDF", e)
             throw PdfParsingException("Failed to parse PDF: ${e.message}", e)

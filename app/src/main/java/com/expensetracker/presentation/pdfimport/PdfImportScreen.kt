@@ -106,6 +106,15 @@ fun PdfImportScreen(
                 }
             }
         }
+        
+        // Password dialog
+        if (state.showPasswordDialog) {
+            PasswordDialog(
+                error = state.error,
+                onDismiss = { viewModel.dismissPasswordDialog() },
+                onSubmit = { password -> viewModel.submitPassword(password) }
+            )
+        }
     }
 }
 
@@ -355,4 +364,61 @@ private fun TransactionItem(
             )
         }
     }
+}
+
+
+@Composable
+fun PasswordDialog(
+    error: String?,
+    onDismiss: () -> Unit,
+    onSubmit: (String) -> Unit
+) {
+    var password by remember { mutableStateOf("") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("PDF Password Required") },
+        text = {
+            Column {
+                Text("This PDF is password protected. Please enter the password to continue.")
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    singleLine = true,
+                    isError = error != null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                if (error != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { 
+                    if (password.isNotBlank()) {
+                        onSubmit(password)
+                    }
+                },
+                enabled = password.isNotBlank()
+            ) {
+                Text("Unlock")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
