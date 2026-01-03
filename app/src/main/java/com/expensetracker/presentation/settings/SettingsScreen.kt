@@ -112,8 +112,6 @@ fun SettingsScreen(
                 }
             }
             
-            }
-            
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
