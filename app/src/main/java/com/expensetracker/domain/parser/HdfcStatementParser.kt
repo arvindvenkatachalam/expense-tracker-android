@@ -15,7 +15,7 @@ import javax.inject.Inject
 
 /**
  * Parser for HDFC Bank statement PDFs
- * Uses spatial analysis of amount positions
+ * Uses balance-change detection to classify withdrawals vs deposits
  */
 class HdfcStatementParser @Inject constructor() : PdfParser {
     
@@ -23,91 +23,25 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         private const val TAG = "HdfcStatementParser"
         
         private val DATE_FORMATS = listOf(
-            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()),
-            SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()),
             SimpleDateFormat("dd/MM/yy", Locale.getDefault()).apply {
-                val calendar = Calendar.getInstance()
-                calendar.set(Calendar.YEAR, 2000)
-                calendar.set(Calendar.MONTH, Calendar.JANUARY)
-                calendar.set(Calendar.DAY_OF_MONTH, 1)
-                set2DigitYearStart(calendar.time)
+                set2DigitYearStart(Date(100, 0, 1)) // Year 2000
             },
-            SimpleDateFormat("dd-MM-yy", Locale.getDefault()).apply {
-                val calendar = Calendar.getInstance()
-                calendar.set(Calendar.YEAR, 2000)
-                calendar.set(Calendar.MONTH, Calendar.JANUARY)
-                calendar.set(Calendar.DAY_OF_MONTH, 1)
-                set2DigitYearStart(calendar.time)
-            }
+            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()),
+            SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
         )
     }
     
-    override suspend fun parsePdf(context: Context, uri: Uri, password: String?): List<PdfTransaction> = withContext(Dispatchers.IO) {
+    override suspend fun parsePdf(context: Context, uri: Uri): List<PdfTransaction> = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "Starting PDF parsing")
-            
             PDFBoxResourceLoader.init(context)
             
             val inputStream = context.contentResolver.openInputStream(uri)
                 ?: throw PdfParsingException("Cannot open PDF file")
             
             val document = PDDocument.load(inputStream)
-            
-            // Check if PDF is encrypted
-            if (document.isEncrypted) {
-                Log.d(TAG, "PDF is encrypted, attempting to decrypt")
-                
-                if (password == null) {
-                    document.close()
-                    inputStream.close()
-                    throw PdfPasswordRequiredException("This PDF is password protected. Please enter your Customer ID.")
-                }
-                
-                // Close the current document and reload with password
-                document.close()
-                inputStream.close()
-                
-                // Reopen with password
-                val inputStream2 = context.contentResolver.openInputStream(uri)
-                    ?: throw PdfParsingException("Cannot open PDF file")
-                
-                val decryptedDocument = try {
-                    PDDocument.load(inputStream2, password)
-                } catch (e: Exception) {
-                    inputStream2.close()
-                    Log.e(TAG, "Decryption error: ${e.javaClass.simpleName} - ${e.message}", e)
-                    throw PdfInvalidPasswordException("Failed to decrypt PDF. Please check your password.")
-                }
-                
-                // Check if still encrypted after decrypt attempt
-                if (decryptedDocument.isEncrypted) {
-                    decryptedDocument.close()
-                    inputStream2.close()
-                    throw PdfInvalidPasswordException("Incorrect password. Please check your Customer ID and try again.")
-                }
-                
-                Log.d(TAG, "PDF decrypted successfully")
-                
-                // Extract text from decrypted document
-                val stripper = PDFTextStripper()
-                val text = stripper.getText(decryptedDocument)
-                decryptedDocument.close()
-                inputStream2.close()
-                
-                Log.d(TAG, "Extracted text length: ${text.length}")
-                
-                val transactions = parseTransactions(text)
-                
-                Log.d(TAG, "Parsed ${transactions.size} transactions")
-                Log.d(TAG, "Total debits: ${transactions.mapNotNull { it.debit }.sum()}")
-                Log.d(TAG, "Total credits: ${transactions.mapNotNull { it.credit }.sum()}")
-                
-                return@withContext transactions
-            }
-            
-            // PDF is not encrypted, process normally
             val stripper = PDFTextStripper()
             val text = stripper.getText(document)
+            
             document.close()
             inputStream.close()
             
@@ -123,10 +57,6 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing PDF", e)
-            // Re-throw password-related exceptions
-            if (e is PdfPasswordRequiredException || e is PdfInvalidPasswordException) {
-                throw e
-            }
             throw PdfParsingException("Failed to parse PDF: ${e.message}", e)
         }
     }
@@ -137,6 +67,8 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         
         var startIndex = -1
         var endIndex = lines.size
+        var depositColumnPos = -1
+        var balanceColumnPos = -1
         
         for (i in lines.indices) {
             val line = lines[i]
@@ -144,7 +76,17 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             if (line.contains("Date") && line.contains("Narration") && 
                 line.contains("Withdrawal Amt.") && line.contains("Deposit Amt.")) {
                 startIndex = i + 1
-                Log.d(TAG, "Found header at line $i: $line")
+                
+                // Detect column positions
+                depositColumnPos = line.indexOf("Deposit Amt.")
+                balanceColumnPos = line.indexOf("Closing Balance")
+                
+                Log.d(TAG, "========== HEADER DETECTION ==========")
+                Log.d(TAG, "Header line: '$line'")
+                Log.d(TAG, "Header line length: ${line.length}")
+                Log.d(TAG, "Deposit column 'Deposit Amt.' at position: $depositColumnPos")
+                Log.d(TAG, "Balance column 'Closing Balance' at position: $balanceColumnPos")
+                Log.d(TAG, "======================================")
             }
             
             if (line.contains("STATEMENT SUMMARY", ignoreCase = true)) {
@@ -160,19 +102,87 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
         }
         
         var i = startIndex
+        var previousBalance: Double? = null  // Track previous transaction's balance
+        
+        // CRITICAL: Extract opening balance FIRST before processing any transactions
+        Log.d(TAG, "========== SEARCHING FOR OPENING BALANCE ==========")
+        
+        // Try multiple search strategies
+        // Strategy 1: Search in statement summary section (after endIndex)
+        Log.d(TAG, "Strategy 1: Searching in statement summary (lines $endIndex to ${lines.size})")
+        for (j in endIndex until lines.size) {
+            val line = lines[j]
+            
+            // Try multiple patterns
+            if (line.contains("Opening Balance", ignoreCase = true) || 
+                line.contains("Opening Bal", ignoreCase = true) ||
+                line.contains("Op. Balance", ignoreCase = true)) {
+                
+                Log.d(TAG, "Found opening balance text at line $j: '$line'")
+                
+                // Try to extract amount from this line
+                val balanceMatch = Regex("""([\d,]+\.\d{2})""").find(line)
+                if (balanceMatch != null) {
+                    previousBalance = balanceMatch.value.replace(",", "").toDouble()
+                    Log.d(TAG, "✓ FOUND OPENING BALANCE: ₹$previousBalance")
+                    break
+                } else {
+                    // Amount might be on next line
+                    if (j + 1 < lines.size) {
+                        val nextLine = lines[j + 1]
+                        val nextMatch = Regex("""([\d,]+\.\d{2})""").find(nextLine)
+                        if (nextMatch != null) {
+                            previousBalance = nextMatch.value.replace(",", "").toDouble()
+                            Log.d(TAG, "✓ FOUND OPENING BALANCE on next line: ₹$previousBalance")
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Strategy 2: If not found, search entire document
+        if (previousBalance == null) {
+            Log.w(TAG, "Strategy 2: Opening balance not found in summary, searching entire document")
+            for (j in lines.indices) {
+                val line = lines[j]
+                if (line.contains("Opening Balance", ignoreCase = true) || 
+                    line.contains("Opening Bal", ignoreCase = true)) {
+                    
+                    val balanceMatch = Regex("""([\d,]+\.\d{2})""").find(line)
+                    if (balanceMatch != null) {
+                        previousBalance = balanceMatch.value.replace(",", "").toDouble()
+                        Log.d(TAG, "✓ FOUND OPENING BALANCE in document: ₹$previousBalance")
+                        break
+                    }
+                }
+            }
+        }
+        
+        if (previousBalance == null) {
+            Log.e(TAG, "❌ CRITICAL: Could not find opening balance anywhere in document!")
+            Log.e(TAG, "   First transaction will be skipped")
+        } else {
+            Log.d(TAG, "✓ Starting with opening balance: ₹$previousBalance")
+        }
+        Log.d(TAG, "===================================================")
+        
         while (i < endIndex) {
             val line = lines[i]
             
             if (line.matches(Regex("""^\d{2}[/-]\d{2}[/-]\d{2,4}.*"""))) {
                 try {
-                    val transaction = parseTransaction(lines, i, endIndex)
+                    val transaction = parseTransaction(lines, i, endIndex, depositColumnPos, balanceColumnPos, previousBalance)
                     if (transaction != null) {
-                        transactions.add(transaction)
+                        // Update previous balance for next iteration
+                        previousBalance = transaction.balance
                         
-                        if (transaction.debit != null) {
-                            Log.d(TAG, "✓ DEBIT: ${transaction.date} - ${transaction.description.take(50)} - ₹${transaction.debit}")
-                        } else if (transaction.credit != null) {
-                            Log.d(TAG, "✓ CREDIT: ${transaction.date} - ${transaction.description.take(50)} - ₹${transaction.credit}")
+                        // Only import withdrawal transactions (debits), skip deposits
+                        if (transaction.debit != null && transaction.debit > 0) {
+                            transactions.add(transaction)
+                            Log.d(TAG, "✓ WITHDRAWAL: ${transaction.date} - ${transaction.description.take(50)} - ₹${transaction.debit}")
+                        } else if (transaction.credit != null && transaction.credit > 0) {
+                            Log.d(TAG, "✗ SKIPPED DEPOSIT: ${transaction.date} - ${transaction.description.take(50)} - ₹${transaction.credit}")
                         }
                     }
                 } catch (e: Exception) {
@@ -189,7 +199,10 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
     private fun parseTransaction(
         allLines: List<String>,
         currentIndex: Int,
-        endIndex: Int
+        endIndex: Int,
+        depositColumnPos: Int,
+        balanceColumnPos: Int,
+        previousBalance: Double?
     ): PdfTransaction? {
         try {
             val firstLine = allLines[currentIndex]
@@ -226,26 +239,41 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             val fullText = transactionLines.joinToString(" ").replace(Regex("""\s+"""), " ")
             Log.d(TAG, "Full text: $fullText")
             
-            // Find reference number (16 digits starting with 0000)
-            val refPattern = Regex("""\b(0000\d{12})\b""")
+            // Find reference number (15-16 digits starting with 0000)
+            val refPattern = Regex("""\b(0000\d{11,12})\b""")
             val refMatch = refPattern.find(fullText)
             
+            val description: String
+            val afterRef: String
+            
             if (refMatch == null) {
-                Log.w(TAG, "No reference number found")
-                return null
+                Log.w(TAG, "No reference number found - using fallback parsing")
+                
+                // Fallback: Description is everything before the first amount
+                val firstAmountMatch = Regex("""([\d,]+\.\d{2})""").find(fullText)
+                if (firstAmountMatch != null) {
+                    description = fullText.substring(0, firstAmountMatch.range.first)
+                        .replace(Regex("""\d{2}[/-]\d{2}[/-]\d{2,4}"""), "")  // Remove dates
+                        .replace(Regex("""\s+"""), " ")
+                        .trim()
+                    afterRef = fullText.substring(firstAmountMatch.range.first)
+                } else {
+                    Log.w(TAG, "No amounts found in transaction")
+                    return null
+                }
+            } else {
+                val refNumber = refMatch.value
+                Log.d(TAG, "Reference: $refNumber at position ${refMatch.range.first}")
+                
+                // Description is everything BEFORE the reference number
+                description = fullText.substring(0, refMatch.range.first)
+                    .replace(Regex("""\d{2}[/-]\d{2}[/-]\d{2,4}"""), "")  // Remove dates
+                    .replace(Regex("""\s+"""), " ")
+                    .trim()
+                
+                // Amounts section is AFTER the reference number
+                afterRef = fullText.substring(refMatch.range.last + 1).trim()
             }
-            
-            val refNumber = refMatch.value
-            Log.d(TAG, "Reference: $refNumber at position ${refMatch.range.first}")
-            
-            // Description is everything BEFORE the reference number
-            val description = fullText.substring(0, refMatch.range.first)
-                .replace(Regex("""\d{2}[/-]\d{2}[/-]\d{2,4}"""), "")  // Remove dates
-                .replace(Regex("""\s+"""), " ")
-                .trim()
-            
-            // Amounts section is AFTER the reference number
-            val afterRef = fullText.substring(refMatch.range.last + 1).trim()
             
             Log.d(TAG, "Description: $description")
             Log.d(TAG, "After ref: '$afterRef'")
@@ -272,59 +300,47 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
             val balance = allAmounts.last()
             Log.d(TAG, "Balance (last): $balance")
             
-            // Process transaction amounts (all except last)
+            // Process transaction amounts (all except last which is balance)
             val txAmounts = allAmounts.dropLast(1)
             
             var withdrawal: Double? = null
             var deposit: Double? = null
             
-            when (txAmounts.size) {
-                0 -> {
-                    Log.d(TAG, "No transaction amount (balance only)")
-                }
-                1 -> {
-                    // Single transaction amount - need to determine type
-                    val amount = txAmounts[0]
-                    
-                    // Get the positions in the original "withoutValueDate" string
-                    val matches = amountPattern.findAll(withoutValueDate).toList()
-                    if (matches.size >= 2) {
-                        val txMatch = matches[0]
-                        val balanceMatch = matches[1]
-                        
-                        val distance = balanceMatch.range.first - txMatch.range.last
-                        
-                        Log.d(TAG, "Transaction: $amount, Balance: $balance")
-                        Log.d(TAG, "Distance between amounts: $distance chars")
-                        
-                        // If there's significant space (30+ chars), it's withdrawal
-                        // If close together (<30 chars), it's deposit
-                        if (distance >= 25) {
-                            withdrawal = amount
-                            Log.d(TAG, "→ WITHDRAWAL (large gap: $distance)")
-                        } else {
-                            deposit = amount
-                            Log.d(TAG, "→ DEPOSIT (small gap: $distance)")
-                        }
-                    } else {
-                        // Fallback
+            // BALANCE-CHANGE APPROACH: Compare current balance with previous balance
+            if (txAmounts.size == 1) {
+                val amount = txAmounts[0]
+                
+                if (previousBalance != null) {
+                    // Compare balances to determine transaction type
+                    if (balance < previousBalance) {
+                        // Balance decreased = Withdrawal
                         withdrawal = amount
-                        Log.d(TAG, "→ WITHDRAWAL (fallback)")
+                        Log.d(TAG, "→ WITHDRAWAL: ₹$amount (balance decreased: ₹$previousBalance → ₹$balance)")
+                    } else if (balance > previousBalance) {
+                        // Balance increased = Deposit
+                        deposit = amount
+                        Log.d(TAG, "→ DEPOSIT: ₹$amount (balance increased: ₹$previousBalance → ₹$balance)")
+                    } else {
+                        // Balance unchanged - shouldn't happen, treat as withdrawal
+                        withdrawal = amount
+                        Log.d(TAG, "→ WITHDRAWAL: ₹$amount (balance unchanged)")
                     }
+                } else {
+                    // First transaction - no opening balance found
+                    // We can't reliably determine if it's withdrawal or deposit
+                    // But we can use this transaction's balance as the starting point for next transactions
+                    Log.w(TAG, "⚠ SKIPPED FIRST TRANSACTION: ₹$amount (no opening balance to compare)")
+                    Log.w(TAG, "  Using this transaction's balance (₹$balance) as reference for next transaction")
+                    // Don't add to transactions list, but continue processing
+                    // The balance will be used as previousBalance for the next transaction
+                    withdrawal = null
+                    deposit = null
                 }
-                2 -> {
-                    // Both withdrawal and deposit
-                    withdrawal = txAmounts[0]
-                    deposit = txAmounts[1]
-                    Log.d(TAG, "Withdrawal: $withdrawal, Deposit: $deposit")
-                }
-                else -> {
-                    // Multiple amounts, take last 2 before balance
-                    if (txAmounts.size >= 2) {
-                        withdrawal = txAmounts[txAmounts.size - 2]
-                        deposit = txAmounts[txAmounts.size - 1]
-                    }
-                }
+            } else if (txAmounts.isEmpty()) {
+                Log.d(TAG, "No transaction amount (balance-only line)")
+            } else {
+                Log.w(TAG, "WARNING: Found ${txAmounts.size} transaction amounts, expected 0 or 1")
+                withdrawal = txAmounts[0]
             }
             
             val timestamp = parseDate(dateStr)
@@ -357,7 +373,7 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                     calendar.timeInMillis = timestamp
                     val year = calendar.get(Calendar.YEAR)
                     
-                    if (year < 1900) {
+                    if (year < 1000) {
                         calendar.set(Calendar.YEAR, year + 2000)
                         timestamp = calendar.timeInMillis
                     }
@@ -365,10 +381,11 @@ class HdfcStatementParser @Inject constructor() : PdfParser {
                     return timestamp
                 }
             } catch (e: Exception) {
-                continue
+                // Try next format
             }
         }
         
+        Log.w(TAG, "Could not parse date: $dateStr")
         return System.currentTimeMillis()
     }
 }

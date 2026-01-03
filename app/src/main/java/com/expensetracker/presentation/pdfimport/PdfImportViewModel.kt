@@ -11,8 +11,6 @@ import com.expensetracker.data.local.entity.Transaction
 import com.expensetracker.data.model.PdfTransaction
 import com.expensetracker.domain.parser.HdfcStatementParser
 import com.expensetracker.domain.parser.PdfParsingException
-import com.expensetracker.domain.parser.PdfPasswordRequiredException
-import com.expensetracker.domain.parser.PdfInvalidPasswordException
 import com.expensetracker.domain.usecase.CategorizationEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,24 +35,16 @@ class PdfImportViewModel @Inject constructor(
     private val _state = MutableStateFlow(PdfImportState())
     val state: StateFlow<PdfImportState> = _state.asStateFlow()
     
-    // Store PDF URI for password retry
-    private var currentPdfUri: Uri? = null
-    private var currentContext: Context? = null
-    
     /**
      * Parse PDF file and extract transactions
      */
-    fun parsePdf(context: Context, uri: Uri, password: String? = null) = viewModelScope.launch {
+    fun parsePdf(context: Context, uri: Uri) = viewModelScope.launch {
         try {
             Log.d(TAG, "Starting PDF parsing")
-            _state.value = _state.value.copy(isLoading = true, error = null, showPasswordDialog = false, passwordError = null)
-            
-            // Store context and URI for password retry
-            currentContext = context
-            currentPdfUri = uri
+            _state.value = _state.value.copy(isLoading = true, error = null)
             
             // Parse PDF
-            val transactions = pdfParser.parsePdf(context, uri, password)
+            val transactions = pdfParser.parsePdf(context, uri)
             
             if (transactions.isEmpty()) {
                 _state.value = _state.value.copy(
@@ -82,20 +72,6 @@ class PdfImportViewModel @Inject constructor(
             
             Log.d(TAG, "Successfully parsed ${transactions.size} transactions")
             
-        } catch (e: PdfPasswordRequiredException) {
-            Log.d(TAG, "PDF requires password")
-            _state.value = _state.value.copy(
-                isLoading = false,
-                showPasswordDialog = true,
-                passwordError = null
-            )
-        } catch (e: PdfInvalidPasswordException) {
-            Log.e(TAG, "Invalid password provided")
-            _state.value = _state.value.copy(
-                isLoading = false,
-                showPasswordDialog = true,
-                passwordError = e.message ?: "Incorrect password"
-            )
         } catch (e: PdfParsingException) {
             Log.e(TAG, "PDF parsing failed", e)
             _state.value = _state.value.copy(
@@ -110,37 +86,6 @@ class PdfImportViewModel @Inject constructor(
             )
         }
     }
-    
-    /**
-     * Submit password for encrypted PDF
-     */
-    fun submitPassword(password: String) {
-        val context = currentContext
-        val uri = currentPdfUri
-        
-        if (context != null && uri != null) {
-            parsePdf(context, uri, password)
-        } else {
-            Log.e(TAG, "Cannot submit password: context or URI is null")
-            _state.value = _state.value.copy(
-                showPasswordDialog = false,
-                error = "Failed to retry with password"
-            )
-        }
-    }
-    
-    /**
-     * Cancel password dialog
-     */
-    fun cancelPasswordDialog() {
-        _state.value = _state.value.copy(
-            showPasswordDialog = false,
-            passwordError = null
-        )
-        currentContext = null
-        currentPdfUri = null
-    }
-    
     
     /**
      * Toggle selection of a transaction
@@ -287,7 +232,5 @@ data class PdfImportState(
     val error: String? = null,
     val importSuccess: Boolean = false,
     val importedCount: Int = 0,
-    val importMessage: String? = null,
-    val showPasswordDialog: Boolean = false,
-    val passwordError: String? = null
+    val importMessage: String? = null
 )

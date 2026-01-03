@@ -11,10 +11,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,8 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.expensetracker.data.model.PdfTransaction
@@ -111,15 +106,6 @@ fun PdfImportScreen(
                 }
             }
         }
-    }
-    
-    // Password Dialog
-    if (state.showPasswordDialog) {
-        PasswordDialog(
-            onDismiss = { viewModel.cancelPasswordDialog() },
-            onSubmit = { password -> viewModel.submitPassword(password) },
-            error = state.passwordError
-        )
     }
 }
 
@@ -369,85 +355,4 @@ private fun TransactionItem(
             )
         }
     }
-}
-
-@Composable
-fun PasswordDialog(
-    onDismiss: () -> Unit,
-    onSubmit: (String) -> Unit,
-    error: String? = null
-) {
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("PDF Password Required") },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Info note
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = "Your Customer ID is your password",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-                
-                // Password input
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Enter Password") },
-                    placeholder = { Text("Customer ID") },
-                    visualTransformation = if (passwordVisible) 
-                        VisualTransformation.None 
-                    else 
-                        PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = if (passwordVisible) "Hide password" else "Show password"
-                            )
-                        }
-                    },
-                    isError = error != null,
-                    supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onSubmit(password) },
-                enabled = password.isNotBlank()
-            ) {
-                Text("Unlock")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
 }

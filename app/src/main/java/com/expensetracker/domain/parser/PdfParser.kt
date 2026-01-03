@@ -10,24 +10,18 @@ import com.expensetracker.data.model.PdfTransaction
 interface PdfParser {
     /**
      * Parse a PDF file and extract transactions
+     * @param context Android context for accessing content resolver
+     * @param uri URI of the PDF file
+     * @return List of extracted transactions
+     * @throws PdfParsingException if parsing fails
      */
-    suspend fun parsePdf(context: Context, uri: Uri, password: String? = null): List<PdfTransaction>
+    suspend fun parsePdf(context: Context, uri: Uri): List<PdfTransaction>
 }
 
 /**
  * Exception thrown when PDF parsing fails
  */
 class PdfParsingException(message: String, cause: Throwable? = null) : Exception(message, cause)
-
-/**
- * Exception thrown when PDF is password protected
- */
-class PdfPasswordRequiredException(message: String) : Exception(message)
-
-/**
- * Exception thrown when provided password is incorrect
- */
-class PdfInvalidPasswordException(message: String) : Exception(message)
 
 /**
  * Result of PDF parsing operation
