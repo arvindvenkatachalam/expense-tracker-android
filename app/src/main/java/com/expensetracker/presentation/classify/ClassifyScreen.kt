@@ -256,7 +256,6 @@ fun ClassifyScreen(
                 }
             }
         }
-        }
     }
     
     // Edit Dialog (without delete button)
