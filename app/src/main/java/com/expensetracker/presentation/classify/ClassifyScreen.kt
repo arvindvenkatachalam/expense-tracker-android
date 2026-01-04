@@ -144,7 +144,8 @@ fun ClassifyScreen(
                         }
                     }
                     
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+
                     
                     // Categories Grid Section
                     Text(
