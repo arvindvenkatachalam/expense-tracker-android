@@ -346,8 +346,8 @@ fun CategoryDropTarget(
     isDragging: Boolean,
     onBoundsChanged: (androidx.compose.ui.geometry.Rect) -> Unit
 ) {
-    val scale by animateDpAsState(
-        targetValue = if (isHovered) 4.dp else 0.dp,
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isHovered) 1.05f else 1f,
         label = "scale"
     )
     
@@ -361,9 +361,14 @@ fun CategoryDropTarget(
             .fillMaxWidth()
             .aspectRatio(1.2f)
             .onGloballyPositioned { coordinates ->
+                // Capture bounds AFTER all modifiers
                 onBoundsChanged(coordinates.boundsInRoot())
             }
-            .padding(scale),
+            .graphicsLayer {
+                // Use scale transform instead of padding to avoid changing bounds
+                scaleX = scale
+                scaleY = scale
+            },
         colors = CardDefaults.cardColors(
             containerColor = if (isHovered) {
                 getCategoryColor(category.color).copy(alpha = 0.3f)
