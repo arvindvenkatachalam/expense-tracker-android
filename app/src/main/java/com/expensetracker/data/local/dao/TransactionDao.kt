@@ -47,4 +47,12 @@ interface TransactionDao {
     
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
+    
+    @Query("""
+        SELECT t.* FROM transactions t
+        INNER JOIN categories c ON t.categoryId = c.id
+        WHERE c.name = 'Others'
+        ORDER BY t.timestamp DESC
+    """)
+    fun getUncategorizedTransactions(): Flow<List<Transaction>>
 }

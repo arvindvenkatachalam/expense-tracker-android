@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Rule
 import androidx.compose.material.icons.filled.Settings
@@ -31,6 +32,7 @@ import dagger.hilt.android.AndroidEntryPoint
 sealed class Screen(val route: String, val title: String) {
     object Dashboard : Screen("dashboard", "Dashboard")
     object Rules : Screen("rules", "Rules")
+    object Classify : Screen("classify", "Classify")
     object Settings : Screen("settings", "Settings")
     object Analysis : Screen("analysis", "Category Analysis")
     object PdfImport : Screen("pdf_import", "Import from PDF")
@@ -88,6 +90,7 @@ fun MainScreen() {
     val bottomNavItems = listOf(
         Screen.Dashboard,
         Screen.Rules,
+        Screen.Classify,
         Screen.Settings
     )
 
@@ -102,6 +105,7 @@ fun MainScreen() {
                                     when (screen) {
                                         Screen.Dashboard -> Icons.Default.Dashboard
                                         Screen.Rules -> Icons.Default.Rule
+                                        Screen.Classify -> Icons.Default.Category
                                         Screen.Settings -> Icons.Default.Settings
                                         else -> Icons.Default.Dashboard
                                     },
@@ -142,6 +146,9 @@ fun MainScreen() {
             }
             composable(Screen.Rules.route) {
                 com.expensetracker.presentation.settings.RulesScreen()
+            }
+            composable(Screen.Classify.route) {
+                com.expensetracker.presentation.classify.ClassifyScreen()
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
