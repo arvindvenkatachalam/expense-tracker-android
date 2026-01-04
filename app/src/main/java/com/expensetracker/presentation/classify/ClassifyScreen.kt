@@ -118,7 +118,7 @@ fun ClassifyScreen(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(0.4f),
+                            .weight(0.27f),
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -173,7 +173,7 @@ fun ClassifyScreen(
                     
                     // Categories Grid Section
                     Text(
-                        text = "Drag transaction to a category",
+                        text = "Drag to categorize, edit, or delete",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -183,11 +183,38 @@ fun ClassifyScreen(
                         columns = GridCells.Fixed(2),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(0.6f),
+                            .weight(0.73f),
                         contentPadding = PaddingValues(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // Edit and Delete action cards
+                        item {
+                            ActionCard(
+                                icon = "✏️",
+                                label = "Edit",
+                                color = MaterialTheme.colorScheme.primary,
+                                isHovered = hoveredCategoryId == -1L,
+                                isDragging = dragInfo != null,
+                                onBoundsChanged = { bounds ->
+                                    categoryBounds[-1L] = bounds
+                                }
+                            )
+                        }
+                        item {
+                            ActionCard(
+                                icon = "🗑️",
+                                label = "Delete",
+                                color = MaterialTheme.colorScheme.error,
+                                isHovered = hoveredCategoryId == -2L,
+                                isDragging = dragInfo != null,
+                                onBoundsChanged = { bounds ->
+                                    categoryBounds[-2L] = bounds
+                                }
+                            )
+                        }
+                        
+                        // Category cards
                         items(uiState.categories, key = { it.id }) { category ->
                             CategoryDropTarget(
                                 category = category,
@@ -379,7 +406,7 @@ fun CategoryDropTarget(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1.2f)
+            .height(56.dp)
             .onGloballyPositioned { coordinates ->
                 // Capture bounds AFTER all modifiers
                 onBoundsChanged(coordinates.boundsInRoot())
@@ -401,37 +428,108 @@ fun CategoryDropTarget(
         elevation = CardDefaults.cardElevation(defaultElevation = elevation),
         shape = RoundedCornerShape(if (isHovered) 16.dp else 12.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
         ) {
             Box(
                 modifier = Modifier
-                    .size(if (isHovered) 64.dp else 56.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(getCategoryColor(category.color).copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = category.icon,
-                    style = if (isHovered) {
-                        MaterialTheme.typography.headlineLarge
-                    } else {
-                        MaterialTheme.typography.headlineMedium
-                    }
+                    style = MaterialTheme.typography.headlineSmall
                 )
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             
             Text(
                 text = category.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = if (isHovered) FontWeight.ExtraBold else FontWeight.Bold,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isHovered) FontWeight.Bold else FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+    }
+}
+
+@Composable
+fun ActionCard(
+    icon: String,
+    label: String,
+    color: Color,
+    isHovered: Boolean,
+    isDragging: Boolean,
+    onBoundsChanged: (androidx.compose.ui.geometry.Rect) -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isHovered) 1.05f else 1f,
+        label = "scale"
+    )
+    
+    val elevation by animateDpAsState(
+        targetValue = if (isHovered) 8.dp else 2.dp,
+        label = "elevation"
+    )
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .onGloballyPositioned { coordinates ->
+                onBoundsChanged(coordinates.boundsInRoot())
+            }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        colors = CardDefaults.cardColors(
+            containerColor = if (isHovered) {
+                color.copy(alpha = 0.3f)
+            } else if (isDragging) {
+                color.copy(alpha = 0.1f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+        shape = RoundedCornerShape(if (isHovered) 16.dp else 12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = icon,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isHovered) FontWeight.Bold else FontWeight.Medium,
+                color = color
             )
         }
     }

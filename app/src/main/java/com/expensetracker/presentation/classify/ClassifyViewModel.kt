@@ -60,4 +60,10 @@ class ClassifyViewModel @Inject constructor(
             transactionDao.updateTransaction(updatedTransaction)
         }
     }
+    
+    fun deleteTransaction(transaction: Transaction) {
+        viewModelScope.launch {
+            transactionDao.deleteTransaction(transaction)
+        }
+    }
 }
