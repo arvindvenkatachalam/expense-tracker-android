@@ -147,7 +147,7 @@ fun ClassifyScreen(
                                     // Prevent double-processing
                                     if (dragInfo == null) {
                                         Log.d(TAG, "⚠️ onDragEnd called but dragInfo is null - ignoring")
-                                        return@onDragEnd
+                                        return@DraggableTransactionItem
                                     }
                                     
                                     Log.d(TAG, "Drop at position: $finalOffset")
