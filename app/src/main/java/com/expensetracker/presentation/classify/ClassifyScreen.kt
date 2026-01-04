@@ -466,7 +466,7 @@ fun CategoryDropTarget(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .height(72.dp)
             .onGloballyPositioned { coordinates ->
                 // Capture bounds AFTER all modifiers
                 onBoundsChanged(coordinates.boundsInRoot())
@@ -491,9 +491,9 @@ fun CategoryDropTarget(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
@@ -542,7 +542,7 @@ fun ActionCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .height(72.dp)
             .onGloballyPositioned { coordinates ->
                 onBoundsChanged(coordinates.boundsInRoot())
             }
@@ -565,9 +565,9 @@ fun ActionCard(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
