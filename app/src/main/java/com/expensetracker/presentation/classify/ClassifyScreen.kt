@@ -144,8 +144,19 @@ fun ClassifyScreen(
                                     }?.key
                                 },
                                 onDragEnd = { finalOffset ->
+                                    // Prevent double-processing
+                                    if (dragInfo == null) {
+                                        Log.d(TAG, "⚠️ onDragEnd called but dragInfo is null - ignoring")
+                                        return@onDragEnd
+                                    }
+                                    
                                     Log.d(TAG, "Drop at position: $finalOffset")
                                     Log.d(TAG, "Available category bounds: ${categoryBounds.size}")
+                                    
+                                    // Clear drag state immediately
+                                    val currentDragInfo = dragInfo
+                                    dragInfo = null
+                                    hoveredCategoryId = null
                                     
                                     // Check final position directly for more reliable drop detection
                                     val droppedOnCategory = categoryBounds.entries.firstOrNull { (catId, bounds) ->
@@ -183,9 +194,6 @@ fun ClassifyScreen(
                                             }
                                         }
                                     }
-                                    
-                                    dragInfo = null
-                                    hoveredCategoryId = null
                                 }
                             )
                         }
