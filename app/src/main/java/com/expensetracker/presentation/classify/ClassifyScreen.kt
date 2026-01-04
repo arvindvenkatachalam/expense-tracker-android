@@ -591,7 +591,6 @@ fun ActionCard(
                 color = color
             )
         }
-        }
     }
 }
 
