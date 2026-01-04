@@ -1,6 +1,8 @@
 package com.expensetracker.presentation.classify
 
+import android.util.Log
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
@@ -19,14 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -35,6 +35,9 @@ import com.expensetracker.data.local.entity.Transaction
 import com.expensetracker.presentation.theme.getCategoryColor
 import com.expensetracker.util.CurrencyUtils
 import com.expensetracker.util.DateUtils
+import kotlinx.coroutines.launch
+
+private const val TAG = "ClassifyScreen"
 
 data class DragTargetInfo(
     val transaction: Transaction,
@@ -51,13 +54,17 @@ fun ClassifyScreen(
     var dragInfo by remember { mutableStateOf<DragTargetInfo?>(null) }
     var hoveredCategoryId by remember { mutableStateOf<Long?>(null) }
     val categoryBounds = remember { mutableStateMapOf<Long, androidx.compose.ui.geometry.Rect>() }
+    
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Classify Transactions") }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         if (uiState.isLoading) {
             Box(
@@ -115,12 +122,13 @@ fun ClassifyScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.uncategorizedTransactions) { transaction ->
+                        items(uiState.uncategorizedTransactions, key = { it.id }) { transaction ->
                             DraggableTransactionItem(
                                 transaction = transaction,
                                 isDragging = dragInfo?.transaction?.id == transaction.id,
                                 onDragStart = { offset ->
                                     dragInfo = DragTargetInfo(transaction, offset)
+                                    Log.d(TAG, "Started dragging: ${transaction.merchant}")
                                 },
                                 onDrag = { offset ->
                                     dragInfo = dragInfo?.copy(offset = offset)
@@ -131,17 +139,41 @@ fun ClassifyScreen(
                                     }?.key
                                 },
                                 onDragEnd = { finalOffset ->
+                                    Log.d(TAG, "Drop at position: $finalOffset")
+                                    Log.d(TAG, "Available category bounds: ${categoryBounds.size}")
+                                    
                                     // Check final position directly for more reliable drop detection
-                                    val droppedOnCategory = categoryBounds.entries.firstOrNull { (_, bounds) ->
-                                        bounds.contains(finalOffset)
+                                    val droppedOnCategory = categoryBounds.entries.firstOrNull { (catId, bounds) ->
+                                        val contains = bounds.contains(finalOffset)
+                                        Log.d(TAG, "Category $catId bounds: $bounds, contains: $contains")
+                                        contains
                                     }?.key
                                     
-                                    droppedOnCategory?.let { categoryId ->
-                                        val category = uiState.categories.find { it.id == categoryId }
+                                    if (droppedOnCategory != null) {
+                                        val category = uiState.categories.find { it.id == droppedOnCategory }
                                         if (category != null) {
+                                            Log.d(TAG, "✓ Categorizing ${transaction.merchant} to ${category.name}")
                                             viewModel.categorizeTransaction(transaction, category)
+                                            
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    message = "✓ Categorized to ${category.name}",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
+                                        } else {
+                                            Log.w(TAG, "✗ Category not found for ID: $droppedOnCategory")
+                                        }
+                                    } else {
+                                        Log.w(TAG, "✗ DROP MISSED - No category at position $finalOffset")
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                message = "Drop missed - try again",
+                                                duration = SnackbarDuration.Short
+                                            )
                                         }
                                     }
+                                    
                                     dragInfo = null
                                     hoveredCategoryId = null
                                 }
@@ -169,13 +201,14 @@ fun ClassifyScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(uiState.categories) { category ->
+                        items(uiState.categories, key = { it.id }) { category ->
                             CategoryDropTarget(
                                 category = category,
                                 isHovered = hoveredCategoryId == category.id,
                                 isDragging = dragInfo != null,
                                 onBoundsChanged = { bounds ->
                                     categoryBounds[category.id] = bounds
+                                    Log.d(TAG, "Updated bounds for ${category.name}: $bounds")
                                 }
                             )
                         }
@@ -346,7 +379,7 @@ fun CategoryDropTarget(
     isDragging: Boolean,
     onBoundsChanged: (androidx.compose.ui.geometry.Rect) -> Unit
 ) {
-    val scale by androidx.compose.animation.core.animateFloatAsState(
+    val scale by animateFloatAsState(
         targetValue = if (isHovered) 1.05f else 1f,
         label = "scale"
     )
