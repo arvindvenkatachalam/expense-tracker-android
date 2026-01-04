@@ -154,24 +154,11 @@ fun ClassifyScreen(
                                         if (category != null) {
                                             Log.d(TAG, "✓ Categorizing ${transaction.merchant} to ${category.name}")
                                             viewModel.categorizeTransaction(transaction, category)
-                                            
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    message = "✓ Categorized to ${category.name}",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
                                         } else {
                                             Log.w(TAG, "✗ Category not found for ID: $droppedOnCategory")
                                         }
                                     } else {
                                         Log.w(TAG, "✗ DROP MISSED - No category at position $finalOffset")
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar(
-                                                message = "Drop missed - try again",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                        }
                                     }
                                     
                                     dragInfo = null
