@@ -55,6 +55,10 @@ fun ClassifyScreen(
     var hoveredCategoryId by remember { mutableStateOf<Long?>(null) }
     val categoryBounds = remember { mutableStateMapOf<Long, androidx.compose.ui.geometry.Rect>() }
     
+    // Dialog states
+    var transactionToEdit by remember { mutableStateOf<Transaction?>(null) }
+    var transactionToDelete by remember { mutableStateOf<Transaction?>(null) }
+    
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -149,16 +153,30 @@ fun ClassifyScreen(
                                         contains
                                     }?.key
                                     
-                                    if (droppedOnCategory != null) {
-                                        val category = uiState.categories.find { it.id == droppedOnCategory }
-                                        if (category != null) {
-                                            Log.d(TAG, "✓ Categorizing ${transaction.merchant} to ${category.name}")
-                                            viewModel.categorizeTransaction(transaction, category)
-                                        } else {
-                                            Log.w(TAG, "✗ Category not found for ID: $droppedOnCategory")
+                                    when (droppedOnCategory) {
+                                        -1L -> {
+                                            // Edit action
+                                            Log.d(TAG, "✏️ Edit transaction: ${transaction.merchant}")
+                                            transactionToEdit = transaction
                                         }
-                                    } else {
-                                        Log.w(TAG, "✗ DROP MISSED - No category at position $finalOffset")
+                                        -2L -> {
+                                            // Delete action
+                                            Log.d(TAG, "🗑️ Delete transaction: ${transaction.merchant}")
+                                            transactionToDelete = transaction
+                                        }
+                                        null -> {
+                                            Log.w(TAG, "✗ DROP MISSED - No category at position $finalOffset")
+                                        }
+                                        else -> {
+                                            // Category drop
+                                            val category = uiState.categories.find { it.id == droppedOnCategory }
+                                            if (category != null) {
+                                                Log.d(TAG, "✓ Categorizing ${transaction.merchant} to ${category.name}")
+                                                viewModel.categorizeTransaction(transaction, category)
+                                            } else {
+                                                Log.w(TAG, "✗ Category not found for ID: $droppedOnCategory")
+                                            }
+                                        }
                                     }
                                     
                                     dragInfo = null
@@ -238,6 +256,48 @@ fun ClassifyScreen(
                 }
             }
         }
+        }
+    }
+    
+    // Edit Dialog (without delete button)
+    transactionToEdit?.let { transaction ->
+        val category = uiState.categories.find { it.id == transaction.categoryId }
+        TransactionEditDialogWithoutDelete(
+            transaction = transaction,
+            category = category,
+            onDismiss = { transactionToEdit = null },
+            onSave = { newAmount ->
+                viewModel.updateTransactionAmount(transaction, newAmount)
+                transactionToEdit = null
+            }
+        )
+    }
+    
+    // Delete Confirmation Dialog
+    transactionToDelete?.let { transaction ->
+        AlertDialog(
+            onDismissRequest = { transactionToDelete = null },
+            title = { Text("Delete Transaction?") },
+            text = { Text("Are you sure you want to delete this transaction? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteTransaction(transaction)
+                        transactionToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { transactionToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -532,5 +592,86 @@ fun ActionCard(
                 color = color
             )
         }
+        }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TransactionEditDialogWithoutDelete(
+    transaction: Transaction,
+    category: Category?,
+    onDismiss: () -> Unit,
+    onSave: (Double) -> Unit
+) {
+    var amountText by remember { mutableStateOf(transaction.amount.toString()) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Transaction") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Transaction details
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = transaction.merchant,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (category != null) {
+                            Text(
+                                text = category.name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = DateUtils.formatDateTime(transaction.timestamp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Divider()
+                
+                // Amount input
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    prefix = { Text("₹") }
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val newAmount = amountText.toDoubleOrNull()
+                    if (newAmount != null && newAmount > 0) {
+                        onSave(newAmount)
+                    }
+                },
+                enabled = amountText.toDoubleOrNull() != null && amountText.toDoubleOrNull()!! > 0
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

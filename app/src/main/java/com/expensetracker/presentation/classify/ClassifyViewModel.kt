@@ -66,4 +66,14 @@ class ClassifyViewModel @Inject constructor(
             transactionDao.deleteTransaction(transaction)
         }
     }
+    
+    fun updateTransactionAmount(transaction: Transaction, newAmount: Double) {
+        viewModelScope.launch {
+            val updatedTransaction = transaction.copy(
+                amount = newAmount,
+                isManuallyEdited = true
+            )
+            transactionDao.updateTransaction(updatedTransaction)
+        }
+    }
 }
