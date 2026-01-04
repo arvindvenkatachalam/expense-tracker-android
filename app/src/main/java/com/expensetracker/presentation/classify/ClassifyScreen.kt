@@ -517,7 +517,6 @@ fun CategoryDropTarget(
             )
         }
     }
-    }
 }
 
 @Composable
