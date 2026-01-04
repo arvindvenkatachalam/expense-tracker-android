@@ -286,8 +286,9 @@ fun ClassifyScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.deleteTransaction(transaction)
+                        val txToDelete = transaction
                         transactionToDelete = null
+                        viewModel.deleteTransaction(txToDelete)
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
