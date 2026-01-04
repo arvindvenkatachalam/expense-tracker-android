@@ -158,12 +158,16 @@ fun ClassifyScreen(
                                         -1L -> {
                                             // Edit action
                                             Log.d(TAG, "✏️ Edit transaction: ${transaction.merchant}")
-                                            transactionToEdit = transaction
+                                            if (transactionToEdit == null) {
+                                                transactionToEdit = transaction
+                                            }
                                         }
                                         -2L -> {
                                             // Delete action
                                             Log.d(TAG, "🗑️ Delete transaction: ${transaction.merchant}")
-                                            transactionToDelete = transaction
+                                            if (transactionToDelete == null) {
+                                                transactionToDelete = transaction
+                                            }
                                         }
                                         null -> {
                                             Log.w(TAG, "✗ DROP MISSED - No category at position $finalOffset")
