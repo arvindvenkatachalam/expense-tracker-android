@@ -198,6 +198,7 @@ fun DraggableTransactionItem(
     onDragEnd: () -> Unit
 ) {
     var itemBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    var dragStartOffset by remember { mutableStateOf(Offset.Zero) }
     
     Card(
         modifier = Modifier
@@ -210,17 +211,22 @@ fun DraggableTransactionItem(
                 detectDragGesturesAfterLongPress(
                     onDragStart = { startOffset ->
                         itemBounds?.let { bounds ->
-                            onDragStart(bounds.center)
+                            dragStartOffset = startOffset
+                            onDragStart(Offset(
+                                bounds.left + startOffset.x,
+                                bounds.top + startOffset.y
+                            ))
                         }
                     },
-                    onDrag = { change, dragAmount ->
+                    onDrag = { change, _ ->
                         change.consume()
                         itemBounds?.let { bounds ->
-                            val newOffset = Offset(
-                                bounds.center.x + change.position.x - bounds.width / 2,
-                                bounds.center.y + change.position.y - bounds.height / 2
+                            // Use absolute position from change
+                            val absolutePosition = Offset(
+                                bounds.left + change.position.x,
+                                bounds.top + change.position.y
                             )
-                            onDrag(newOffset)
+                            onDrag(absolutePosition)
                         }
                     },
                     onDragEnd = {
@@ -278,11 +284,11 @@ fun FloatingTransactionCard(
     Card(
         modifier = Modifier
             .width(300.dp)
-            .offset(x = offset.x.dp, y = offset.y.dp)
             .zIndex(1000f)
             .graphicsLayer {
-                translationX = -150.dp.toPx() // Center horizontally
-                translationY = -40.dp.toPx()  // Center vertically
+                // Position the card centered under the finger
+                translationX = offset.x - 150.dp.toPx()
+                translationY = offset.y - 40.dp.toPx()
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
