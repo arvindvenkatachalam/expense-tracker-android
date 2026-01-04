@@ -267,15 +267,6 @@ private fun TransactionReviewView(
                         onClick = if (selectedCount == transactions.size) onDeselectAll else onSelectAll,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            if (selectedCount == transactions.size) 
-                                Icons.Default.CheckBoxOutlineBlank 
-                            else 
-                                Icons.Default.CheckBox,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
                         Text(
                             if (selectedCount == transactions.size) 
                                 "Deselect All" 
@@ -290,12 +281,6 @@ private fun TransactionReviewView(
                         modifier = Modifier.weight(1f),
                         enabled = transactions.any { it.isDuplicate && it.isSelected }
                     ) {
-                        Icon(
-                            Icons.Default.FilterList,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
                         Text("Deselect Duplicates")
                     }
                 }
