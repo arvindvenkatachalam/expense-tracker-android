@@ -130,8 +130,13 @@ fun ClassifyScreen(
                                         bounds.contains(offset)
                                     }?.key
                                 },
-                                onDragEnd = {
-                                    hoveredCategoryId?.let { categoryId ->
+                                onDragEnd = { finalOffset ->
+                                    // Check final position directly for more reliable drop detection
+                                    val droppedOnCategory = categoryBounds.entries.firstOrNull { (_, bounds) ->
+                                        bounds.contains(finalOffset)
+                                    }?.key
+                                    
+                                    droppedOnCategory?.let { categoryId ->
                                         val category = uiState.categories.find { it.id == categoryId }
                                         if (category != null) {
                                             viewModel.categorizeTransaction(transaction, category)
@@ -195,10 +200,10 @@ fun DraggableTransactionItem(
     isDragging: Boolean,
     onDragStart: (Offset) -> Unit,
     onDrag: (Offset) -> Unit,
-    onDragEnd: () -> Unit
+    onDragEnd: (Offset) -> Unit
 ) {
     var itemBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-    var dragStartOffset by remember { mutableStateOf(Offset.Zero) }
+    var currentPosition by remember { mutableStateOf(Offset.Zero) }
     
     Card(
         modifier = Modifier
@@ -211,11 +216,12 @@ fun DraggableTransactionItem(
                 detectDragGesturesAfterLongPress(
                     onDragStart = { startOffset ->
                         itemBounds?.let { bounds ->
-                            dragStartOffset = startOffset
-                            onDragStart(Offset(
+                            val position = Offset(
                                 bounds.left + startOffset.x,
                                 bounds.top + startOffset.y
-                            ))
+                            )
+                            currentPosition = position
+                            onDragStart(position)
                         }
                     },
                     onDrag = { change, _ ->
@@ -226,14 +232,15 @@ fun DraggableTransactionItem(
                                 bounds.left + change.position.x,
                                 bounds.top + change.position.y
                             )
+                            currentPosition = absolutePosition
                             onDrag(absolutePosition)
                         }
                     },
                     onDragEnd = {
-                        onDragEnd()
+                        onDragEnd(currentPosition)
                     },
                     onDragCancel = {
-                        onDragEnd()
+                        onDragEnd(currentPosition)
                     }
                 )
             }
