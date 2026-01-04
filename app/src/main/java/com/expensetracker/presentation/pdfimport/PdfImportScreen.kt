@@ -10,7 +10,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -101,6 +104,7 @@ fun PdfImportScreen(
                         onToggleTransaction = { index -> viewModel.toggleTransaction(index) },
                         onSelectAll = { viewModel.selectAll() },
                         onDeselectAll = { viewModel.deselectAll() },
+                        onDeselectDuplicates = { viewModel.deselectDuplicates() },
                         onImport = { viewModel.importSelected() }
                     )
                 }
@@ -223,6 +227,7 @@ private fun TransactionReviewView(
     onToggleTransaction: (Int) -> Unit,
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
+    onDeselectDuplicates: () -> Unit,
     onImport: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -252,16 +257,46 @@ private fun TransactionReviewView(
                     color = MaterialTheme.colorScheme.primary
                 )
                 
-                // Select All / Deselect All
+                // Smart selection controls
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(onClick = onSelectAll) {
-                        Text("Select All")
+                    // Smart toggle: "Select All" or "Deselect All" based on state
+                    OutlinedButton(
+                        onClick = if (selectedCount == transactions.size) onDeselectAll else onSelectAll,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            if (selectedCount == transactions.size) 
+                                Icons.Default.CheckBoxOutlineBlank 
+                            else 
+                                Icons.Default.CheckBox,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            if (selectedCount == transactions.size) 
+                                "Deselect All" 
+                            else 
+                                "Select All"
+                        )
                     }
-                    TextButton(onClick = onDeselectAll) {
-                        Text("Deselect All")
+                    
+                    // Deselect Duplicates - only enabled if there are selected duplicates
+                    OutlinedButton(
+                        onClick = onDeselectDuplicates,
+                        modifier = Modifier.weight(1f),
+                        enabled = transactions.any { it.isDuplicate && it.isSelected }
+                    ) {
+                        Icon(
+                            Icons.Default.FilterList,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Deselect Duplicates")
                     }
                 }
             }

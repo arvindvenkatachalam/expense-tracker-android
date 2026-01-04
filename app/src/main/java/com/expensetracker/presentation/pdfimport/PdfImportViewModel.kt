@@ -216,6 +216,24 @@ class PdfImportViewModel @Inject constructor(
     }
     
     /**
+     * Deselect all duplicate transactions
+     */
+    fun deselectDuplicates() {
+        val transactions = _state.value.pdfTransactions.map { tx ->
+            if (tx.isDuplicate) {
+                tx.copy(isSelected = false)
+            } else {
+                tx
+            }
+        }
+        _state.value = _state.value.copy(
+            pdfTransactions = transactions,
+            selectedCount = transactions.count { it.isSelected },
+            totalAmount = calculateTotalAmount(transactions.filter { it.isSelected })
+        )
+    }
+    
+    /**
      * Import selected transactions to database
      */
     fun importSelected() = viewModelScope.launch {
