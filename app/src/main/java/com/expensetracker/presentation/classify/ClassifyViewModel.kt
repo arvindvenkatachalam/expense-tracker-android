@@ -8,6 +8,7 @@ import com.expensetracker.data.local.dao.TransactionDao
 import com.expensetracker.data.local.entity.Category
 import com.expensetracker.data.local.entity.Transaction
 import com.expensetracker.data.repository.ExpenseRepository
+import com.expensetracker.util.DateSelectionManager
 import com.expensetracker.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -28,15 +29,10 @@ data class ClassifyUiState(
 class ClassifyViewModel @Inject constructor(
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
-    private val repository: ExpenseRepository
+    private val repository: ExpenseRepository,
+    private val dateSelectionManager: DateSelectionManager
 ) : ViewModel() {
 
-    // Current date as default
-    private val currentCalendar = Calendar.getInstance()
-    private val _selectedYear = MutableStateFlow(currentCalendar.get(Calendar.YEAR))
-    private val _selectedMonth = MutableStateFlow(currentCalendar.get(Calendar.MONTH))
-    private val _selectedDate = MutableStateFlow<Int?>(currentCalendar.get(Calendar.DAY_OF_MONTH))
-    
     private val _uiState = MutableStateFlow(ClassifyUiState())
     val uiState: StateFlow<ClassifyUiState> = _uiState.asStateFlow()
 
@@ -46,7 +42,11 @@ class ClassifyViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch {
-            val timeRange = combine(_selectedYear, _selectedMonth, _selectedDate) { year, month, date ->
+            val timeRange = combine(
+                dateSelectionManager.selectedYear,
+                dateSelectionManager.selectedMonth,
+                dateSelectionManager.selectedDate
+            ) { year, month, date ->
                 if (date != null) {
                     DateUtils.getDateRange(year, month, date)
                 } else {
@@ -59,9 +59,9 @@ class ClassifyViewModel @Inject constructor(
                     transactionDao.getUncategorizedTransactionsByTimeRange(start, end)
                 },
                 categoryDao.getAllCategories(),
-                _selectedYear,
-                _selectedMonth,
-                _selectedDate
+                dateSelectionManager.selectedYear,
+                dateSelectionManager.selectedMonth,
+                dateSelectionManager.selectedDate
             ) { transactions, allCategories, year, month, date ->
                 // Filter out "Others" category from the list
                 val categoriesForClassification = allCategories.filter { 
@@ -112,24 +112,14 @@ class ClassifyViewModel @Inject constructor(
     }
     
     fun selectDate(date: Int?) {
-        _selectedDate.value = date
+        dateSelectionManager.selectDate(date)
     }
     
     fun goToPreviousMonth() {
-        val calendar = Calendar.getInstance()
-        calendar.set(_selectedYear.value, _selectedMonth.value, 1)
-        calendar.add(Calendar.MONTH, -1)
-        _selectedYear.value = calendar.get(Calendar.YEAR)
-        _selectedMonth.value = calendar.get(Calendar.MONTH)
-        _selectedDate.value = null // Reset to show entire month
+        dateSelectionManager.goToPreviousMonth()
     }
     
     fun goToNextMonth() {
-        val calendar = Calendar.getInstance()
-        calendar.set(_selectedYear.value, _selectedMonth.value, 1)
-        calendar.add(Calendar.MONTH, 1)
-        _selectedYear.value = calendar.get(Calendar.YEAR)
-        _selectedMonth.value = calendar.get(Calendar.MONTH)
-        _selectedDate.value = null // Reset to show entire month
+        dateSelectionManager.goToNextMonth()
     }
 }

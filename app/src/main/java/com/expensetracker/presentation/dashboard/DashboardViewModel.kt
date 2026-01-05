@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.expensetracker.data.local.entity.Category
 import com.expensetracker.data.local.entity.Transaction
 import com.expensetracker.data.repository.ExpenseRepository
+import com.expensetracker.util.DateSelectionManager
 import com.expensetracker.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -31,17 +32,15 @@ data class DashboardUiState(
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val repository: ExpenseRepository
+    private val repository: ExpenseRepository,
+    private val dateSelectionManager: DateSelectionManager
 ) : ViewModel() {
     
-    // Current date as default
-    private val currentCalendar = Calendar.getInstance()
-    private val _selectedYear = MutableStateFlow(currentCalendar.get(Calendar.YEAR))
-    private val _selectedMonth = MutableStateFlow(currentCalendar.get(Calendar.MONTH))
-    private val _selectedDate = MutableStateFlow<Int?>(currentCalendar.get(Calendar.DAY_OF_MONTH))
-    private val _refreshTrigger = MutableStateFlow(0L)
-    
-    private val timeRange = combine(_selectedYear, _selectedMonth, _selectedDate) { year, month, date ->
+    private val timeRange = combine(
+        dateSelectionManager.selectedYear,
+        dateSelectionManager.selectedMonth,
+        dateSelectionManager.selectedDate
+    ) { year, month, date ->
         if (date != null) {
             DateUtils.getDateRange(year, month, date)
         } else {
@@ -49,9 +48,7 @@ class DashboardViewModel @Inject constructor(
         }
     }
     
-    private val transactions = combine(timeRange, _refreshTrigger) { range, _ ->
-        range
-    }.flatMapLatest { (start, end) ->
+    private val transactions = timeRange.flatMapLatest { (start, end) ->
         repository.getTransactionsByTimeRange(start, end)
     }
     
@@ -60,9 +57,9 @@ class DashboardViewModel @Inject constructor(
     val uiState: StateFlow<DashboardUiState> = combine(
         transactions,
         categories,
-        _selectedYear,
-        _selectedMonth,
-        _selectedDate
+        dateSelectionManager.selectedYear,
+        dateSelectionManager.selectedMonth,
+        dateSelectionManager.selectedDate
     ) { trans, cats, year, month, date ->
         val debitTransactions = trans.filter { it.transactionType == "DEBIT" }
         val totalExpenses = debitTransactions.sumOf { it.amount }
@@ -100,32 +97,15 @@ class DashboardViewModel @Inject constructor(
     
     
     fun selectDate(date: Int?) {
-        _selectedDate.value = date
+        dateSelectionManager.selectDate(date)
     }
     
     fun goToPreviousMonth() {
-        val calendar = Calendar.getInstance()
-        calendar.set(_selectedYear.value, _selectedMonth.value, 1)
-        calendar.add(Calendar.MONTH, -1)
-        _selectedYear.value = calendar.get(Calendar.YEAR)
-        _selectedMonth.value = calendar.get(Calendar.MONTH)
-        _selectedDate.value = null // Reset to show entire month
+        dateSelectionManager.goToPreviousMonth()
     }
     
     fun goToNextMonth() {
-        val calendar = Calendar.getInstance()
-        calendar.set(_selectedYear.value, _selectedMonth.value, 1)
-        calendar.add(Calendar.MONTH, 1)
-        _selectedYear.value = calendar.get(Calendar.YEAR)
-        _selectedMonth.value = calendar.get(Calendar.MONTH)
-        _selectedDate.value = null // Reset to show entire month
-    }
-    
-    /**
-     * Force refresh by incrementing trigger to force Flow re-emission
-     */
-    fun forceRefresh() {
-        _refreshTrigger.value = System.currentTimeMillis()
+        dateSelectionManager.goToNextMonth()
     }
     
     /**
@@ -135,7 +115,6 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             val updatedTransaction = transaction.copy(amount = newAmount)
             repository.updateTransaction(updatedTransaction)
-            forceRefresh()
         }
     }
     
@@ -145,7 +124,6 @@ class DashboardViewModel @Inject constructor(
     fun deleteTransaction(transaction: Transaction) {
         viewModelScope.launch {
             repository.deleteTransaction(transaction)
-            forceRefresh()
         }
     }
 }
