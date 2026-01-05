@@ -56,7 +56,9 @@ class ClassifyViewModel @Inject constructor(
 
     fun categorizeTransaction(transaction: Transaction, category: Category) {
         viewModelScope.launch {
-            val updatedTransaction = transaction.copy(
+            // Fetch the latest transaction from DB to get current amount
+            val freshTransaction = transactionDao.getTransactionById(transaction.id) ?: transaction
+            val updatedTransaction = freshTransaction.copy(
                 categoryId = category.id,
                 isManuallyEdited = true
             )
