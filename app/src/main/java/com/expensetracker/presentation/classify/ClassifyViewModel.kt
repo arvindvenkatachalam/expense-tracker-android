@@ -1,5 +1,6 @@
 package com.expensetracker.presentation.classify
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.expensetracker.data.local.dao.CategoryDao
@@ -69,11 +70,13 @@ class ClassifyViewModel @Inject constructor(
     
     fun updateTransactionAmount(transaction: Transaction, newAmount: Double) {
         viewModelScope.launch {
+            Log.d("ClassifyViewModel", "Updating transaction ${transaction.id}: ${transaction.merchant} amount from ${transaction.amount} to $newAmount")
             val updatedTransaction = transaction.copy(
                 amount = newAmount,
                 isManuallyEdited = true
             )
             transactionDao.updateTransaction(updatedTransaction)
+            Log.d("ClassifyViewModel", "Transaction updated in database")
         }
     }
 }
