@@ -12,35 +12,42 @@ import com.expensetracker.R
 
 object NotificationHelper {
     
+    private const val TAG = "NotificationHelper"
     private const val CHANNEL_ID_MONITORING = "transaction_monitoring"
     private const val CHANNEL_ID_TRANSACTIONS = "new_transactions"
     private const val NOTIFICATION_ID_SERVICE = 1
     private var notificationIdCounter = 100
     
     fun createNotificationChannels(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            
-            // Channel for foreground service
-            val monitoringChannel = NotificationChannel(
-                CHANNEL_ID_MONITORING,
-                "Transaction Monitoring",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Shows when the app is monitoring for transactions"
+        try {
+            android.util.Log.d(TAG, "Creating notification channels...")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                
+                // Channel for foreground service
+                val monitoringChannel = NotificationChannel(
+                    CHANNEL_ID_MONITORING,
+                    "Transaction Monitoring",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Shows when the app is monitoring for transactions"
+                }
+                
+                // Channel for transaction notifications
+                val transactionChannel = NotificationChannel(
+                    CHANNEL_ID_TRANSACTIONS,
+                    "New Transactions",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                ).apply {
+                    description = "Notifies you when new transactions are detected"
+                }
+                
+                notificationManager.createNotificationChannel(monitoringChannel)
+                notificationManager.createNotificationChannel(transactionChannel)
+                android.util.Log.d(TAG, "Notification channels created successfully")
             }
-            
-            // Channel for transaction notifications
-            val transactionChannel = NotificationChannel(
-                CHANNEL_ID_TRANSACTIONS,
-                "New Transactions",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Notifies you when new transactions are detected"
-            }
-            
-            notificationManager.createNotificationChannel(monitoringChannel)
-            notificationManager.createNotificationChannel(transactionChannel)
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Error creating notification channels", e)
         }
     }
     
@@ -94,30 +101,38 @@ object NotificationHelper {
         merchant: String,
         amount: Double
     ) {
-        // Intent to open Classify screen
-        val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra("navigate_to", "classify")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        try {
+            android.util.Log.d(TAG, "Showing Others category notification for $merchant, amount: $amount")
+            
+            // Intent to open Classify screen
+            val intent = Intent(context, MainActivity::class.java).apply {
+                putExtra("navigate_to", "classify")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID_TRANSACTIONS)
+                .setContentTitle("Transaction Needs Categorization")
+                .setContentText("₹$amount at $merchant")
+                .setSubText("Tap to categorize")
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .build()
+            
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val notifId = notificationIdCounter++
+            notificationManager.notify(notifId, notification)
+            android.util.Log.d(TAG, "Others notification shown successfully with ID: $notifId")
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Error showing Others category notification", e)
         }
-        
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID_TRANSACTIONS)
-            .setContentTitle("Transaction Needs Categorization")
-            .setContentText("₹$amount at $merchant")
-            .setSubText("Tap to categorize")
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-        
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(notificationIdCounter++, notification)
     }
 }
