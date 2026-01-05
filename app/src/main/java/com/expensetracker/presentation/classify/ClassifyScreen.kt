@@ -429,9 +429,9 @@ fun FloatingTransactionCard(
             .width(300.dp)
             .zIndex(1000f)
             .graphicsLayer {
-                // Position the card centered under the finger
-                translationX = offset.x - 150.dp.toPx()
-                translationY = offset.y - 40.dp.toPx()
+                // Center the card horizontally under the finger, slightly above vertically
+                translationX = offset.x - (300.dp.toPx() / 2f)
+                translationY = offset.y - 60.dp.toPx()
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
