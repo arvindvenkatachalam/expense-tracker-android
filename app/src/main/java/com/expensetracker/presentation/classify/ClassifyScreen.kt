@@ -123,164 +123,166 @@ fun ClassifyScreen(
                     }
                 }
             } else {
-                Column(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    // Uncategorized Transactions Section
-                    Text(
-                        text = "Uncategorized Transactions (${uiState.uncategorizedTransactions.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                    
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(0.27f),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        items(uiState.uncategorizedTransactions, key = { it.id }) { transaction ->
-                            DraggableTransactionItem(
-                                transaction = transaction,
-                                isDragging = dragInfo?.transaction?.id == transaction.id,
-                                onDragStart = { offset ->
-                                    dragInfo = DragTargetInfo(transaction, offset)
-                                    Log.d(TAG, "Started dragging: ${transaction.merchant}")
-                                },
-                                onDrag = { offset ->
-                                    dragInfo = dragInfo?.copy(offset = offset)
-                                    
-                                    // Check which category is being hovered
-                                    hoveredCategoryId = categoryBounds.entries.firstOrNull { (_, bounds) ->
-                                        bounds.contains(offset)
-                                    }?.key
-                                },
-                                onDragEnd = { finalOffset ->
-                                    // Prevent double-processing
-                                    if (dragInfo == null) {
-                                        Log.d(TAG, "⚠️ onDragEnd called but dragInfo is null - ignoring")
-                                        return@DraggableTransactionItem
+                        // Uncategorized Transactions Section
+                        Text(
+                            text = "Uncategorized Transactions (${uiState.uncategorizedTransactions.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        
+                        LazyColumn(
+                            modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(0.27f),
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(uiState.uncategorizedTransactions, key = { it.id }) { transaction ->
+                                DraggableTransactionItem(
+                                    transaction = transaction,
+                                    isDragging = dragInfo?.transaction?.id == transaction.id,
+                                    onDragStart = { offset ->
+                                        dragInfo = DragTargetInfo(transaction, offset)
+                                        Log.d(TAG, "Started dragging: ${transaction.merchant}")
+                                    },
+                                    onDrag = { offset ->
+                                        dragInfo = dragInfo?.copy(offset = offset)
+                                        
+                                        // Check which category is being hovered
+                                        hoveredCategoryId = categoryBounds.entries.firstOrNull { (_, bounds) ->
+                                            bounds.contains(offset)
+                                        }?.key
+                                    },
+                                    onDragEnd = { finalOffset ->
+                                        // Prevent double-processing
+                                        if (dragInfo == null) {
+                                            Log.d(TAG, "⚠️ onDragEnd called but dragInfo is null - ignoring")
+                                            return@DraggableTransactionItem
+                                        }
+                                        
+                                        Log.d(TAG, "Drop at position: $finalOffset")
+                                        Log.d(TAG, "Available category bounds: ${categoryBounds.size}")
+                                        
+                                        // Clear drag state immediately
+                                        val currentDragInfo = dragInfo
+                                        dragInfo = null
+                                        hoveredCategoryId = null
+                                        
+                                        // Check final position directly for more reliable drop detection
+                                        val droppedOnCategory = categoryBounds.entries.firstOrNull { (catId, bounds) ->
+                                            val contains = bounds.contains(finalOffset)
+                                            Log.d(TAG, "Category $catId bounds: $bounds, contains: $contains")
+                                            contains
+                                        }?.key
+                                        
+                                        when (droppedOnCategory) {
+                                            -1L -> {
+                                                // Edit action
+                                                Log.d(TAG, "✏️ Edit transaction: ${transaction.merchant}")
+                                                if (transactionToEdit == null) {
+                                                    transactionToEdit = transaction
+                                                }
+                                            }
+                                            -2L -> {
+                                                // Delete action
+                                                Log.d(TAG, "🗑️ Delete transaction: ${transaction.merchant}")
+                                                if (transactionToDelete == null) {
+                                                    transactionToDelete = transaction
+                                                }
+                                            }
+                                            null -> {
+                                                Log.w(TAG, "✗ DROP MISSED - No category at position $finalOffset")
+                                            }
+                                            else -> {
+                                                // Category drop
+                                                val category = uiState.categories.find { it.id == droppedOnCategory }
+                                                if (category != null) {
+                                                    Log.d(TAG, "✓ Categorizing ${transaction.merchant} to ${category.name}")
+                                                    viewModel.categorizeTransaction(transaction, category)
+                                                } else {
+                                                    Log.w(TAG, "✗ Category not found for ID: $droppedOnCategory")
+                                                }
+                                            }
+                                        }
                                     }
-                                    
-                                    Log.d(TAG, "Drop at position: $finalOffset")
-                                    Log.d(TAG, "Available category bounds: ${categoryBounds.size}")
-                                    
-                                    // Clear drag state immediately
-                                    val currentDragInfo = dragInfo
-                                    dragInfo = null
-                                    hoveredCategoryId = null
-                                    
-                                    // Check final position directly for more reliable drop detection
-                                    val droppedOnCategory = categoryBounds.entries.firstOrNull { (catId, bounds) ->
-                                        val contains = bounds.contains(finalOffset)
-                                        Log.d(TAG, "Category $catId bounds: $bounds, contains: $contains")
-                                        contains
-                                    }?.key
-                                    
-                                    when (droppedOnCategory) {
-                                        -1L -> {
-                                            // Edit action
-                                            Log.d(TAG, "✏️ Edit transaction: ${transaction.merchant}")
-                                            if (transactionToEdit == null) {
-                                                transactionToEdit = transaction
-                                            }
-                                        }
-                                        -2L -> {
-                                            // Delete action
-                                            Log.d(TAG, "🗑️ Delete transaction: ${transaction.merchant}")
-                                            if (transactionToDelete == null) {
-                                                transactionToDelete = transaction
-                                            }
-                                        }
-                                        null -> {
-                                            Log.w(TAG, "✗ DROP MISSED - No category at position $finalOffset")
-                                        }
-                                        else -> {
-                                            // Category drop
-                                            val category = uiState.categories.find { it.id == droppedOnCategory }
-                                            if (category != null) {
-                                                Log.d(TAG, "✓ Categorizing ${transaction.merchant} to ${category.name}")
-                                                viewModel.categorizeTransaction(transaction, category)
-                                            } else {
-                                                Log.w(TAG, "✗ Category not found for ID: $droppedOnCategory")
-                                            }
-                                        }
-                                    }
-                                }
-                            )
-                        }
-                    }
-                    
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    
-                    // Categories Grid Section
-                    Text(
-                        text = "Drag to categorize, edit, or delete",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                    
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(0.73f),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Edit and Delete action cards
-                        item {
-                            ActionCard(
-                                icon = "✏️",
-                                label = "Edit",
-                                color = MaterialTheme.colorScheme.primary,
-                                isHovered = hoveredCategoryId == -1L,
-                                isDragging = dragInfo != null,
-                                onBoundsChanged = { bounds ->
-                                    categoryBounds[-1L] = bounds
-                                }
-                            )
-                        }
-                        item {
-                            ActionCard(
-                                icon = "🗑️",
-                                label = "Delete",
-                                color = MaterialTheme.colorScheme.error,
-                                isHovered = hoveredCategoryId == -2L,
-                                isDragging = dragInfo != null,
-                                onBoundsChanged = { bounds ->
-                                    categoryBounds[-2L] = bounds
-                                }
-                            )
+                                )
+                            }
                         }
                         
-                        // Category cards
-                        items(uiState.categories, key = { it.id }) { category ->
-                            CategoryDropTarget(
-                                category = category,
-                                isHovered = hoveredCategoryId == category.id,
-                                isDragging = dragInfo != null,
-                                onBoundsChanged = { bounds ->
-                                    categoryBounds[category.id] = bounds
-                                    Log.d(TAG, "Updated bounds for ${category.name}: $bounds")
-                                }
-                            )
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                        
+                        // Categories Grid Section
+                        Text(
+                            text = "Drag to categorize, edit, or delete",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(0.73f),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Edit and Delete action cards
+                            item {
+                                ActionCard(
+                                    icon = "✏️",
+                                    label = "Edit",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    isHovered = hoveredCategoryId == -1L,
+                                    isDragging = dragInfo != null,
+                                    onBoundsChanged = { bounds ->
+                                        categoryBounds[-1L] = bounds
+                                    }
+                                )
+                            }
+                            item {
+                                ActionCard(
+                                    icon = "🗑️",
+                                    label = "Delete",
+                                    color = MaterialTheme.colorScheme.error,
+                                    isHovered = hoveredCategoryId == -2L,
+                                    isDragging = dragInfo != null,
+                                    onBoundsChanged = { bounds ->
+                                        categoryBounds[-2L] = bounds
+                                    }
+                                )
+                            }
+                            
+                            // Category cards
+                            items(uiState.categories, key = { it.id }) { category ->
+                                CategoryDropTarget(
+                                    category = category,
+                                    isHovered = hoveredCategoryId == category.id,
+                                    isDragging = dragInfo != null,
+                                    onBoundsChanged = { bounds ->
+                                        categoryBounds[category.id] = bounds
+                                        Log.d(TAG, "Updated bounds for ${category.name}: $bounds")
+                                    }
+                                )
+                            }
                         }
                     }
+                    
+                    // Floating dragged item - Always visible when dragging
+                    dragInfo?.let { info ->
+                        FloatingTransactionCard(
+                            transaction = info.transaction,
+                            offset = info.offset
+                        )
+                    }
                 }
-            }
-            
-            // Floating dragged item - Always visible when dragging
-            dragInfo?.let { info ->
-                FloatingTransactionCard(
-                    transaction = info.transaction,
-                    offset = info.offset
-                )
             }
         }
     }
