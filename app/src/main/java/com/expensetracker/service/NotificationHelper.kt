@@ -88,4 +88,36 @@ object NotificationHelper {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationIdCounter++, notification)
     }
+    
+    fun showOthersCategoryNotification(
+        context: Context,
+        merchant: String,
+        amount: Double
+    ) {
+        // Intent to open Classify screen
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra("navigate_to", "classify")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID_TRANSACTIONS)
+            .setContentTitle("Transaction Needs Categorization")
+            .setContentText("₹$amount at $merchant")
+            .setSubText("Tap to categorize")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+        
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(notificationIdCounter++, notification)
+    }
 }

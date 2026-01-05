@@ -91,14 +91,24 @@ class SmsReceiver : BroadcastReceiver() {
                     val id = repository.insertTransaction(transaction)
                     Log.d(TAG, "Transaction inserted with ID: $id")
                     
-                    // Show notification
+                    // Show appropriate notification based on category
                     val category = repository.getCategoryById(categoryId)
-                    NotificationHelper.showTransactionNotification(
-                        context,
-                        parsedTransaction.merchant,
-                        parsedTransaction.amount,
-                        category?.name ?: "Others"
-                    )
+                    if (category?.name?.equals("Others", ignoreCase = true) == true) {
+                        // Show special notification for uncategorized transactions
+                        NotificationHelper.showOthersCategoryNotification(
+                            context,
+                            parsedTransaction.merchant,
+                            parsedTransaction.amount
+                        )
+                    } else {
+                        // Show normal transaction notification
+                        NotificationHelper.showTransactionNotification(
+                            context,
+                            parsedTransaction.merchant,
+                            parsedTransaction.amount,
+                            category?.name ?: "Others"
+                        )
+                    }
                     
                 } catch (e: Exception) {
                     Log.e(TAG, "Error processing transaction", e)

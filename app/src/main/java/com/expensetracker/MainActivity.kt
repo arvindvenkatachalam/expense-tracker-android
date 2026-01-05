@@ -52,10 +52,25 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestPermissions()
+        
+        // Check if launched from notification
+        val navigateTo = intent.getStringExtra("navigate_to")
+        
         setContent {
             ExpenseTrackerTheme {
-                MainScreen()
+                MainScreen(initialRoute = navigateTo)
             }
+        }
+    }
+    
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // Handle navigation when app is already running
+        val navigateTo = intent.getStringExtra("navigate_to")
+        if (navigateTo != null) {
+            // Recreate to trigger navigation
+            recreate()
         }
     }
 
@@ -82,10 +97,22 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(initialRoute: String? = null) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    
+    // Handle deep link navigation from notification
+    LaunchedEffect(initialRoute) {
+        if (initialRoute == "classify") {
+            navController.navigate(Screen.Classify.route) {
+                popUpTo(Screen.Dashboard.route) {
+                    saveState = true
+                }
+                launchSingleTop = true
+            }
+        }
+    }
 
     val bottomNavItems = listOf(
         Screen.Dashboard,
