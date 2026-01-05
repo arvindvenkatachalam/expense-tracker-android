@@ -7,6 +7,7 @@ import com.expensetracker.data.local.dao.CategoryDao
 import com.expensetracker.data.local.dao.TransactionDao
 import com.expensetracker.data.local.entity.Category
 import com.expensetracker.data.local.entity.Transaction
+import com.expensetracker.data.repository.ExpenseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -21,7 +22,8 @@ data class ClassifyUiState(
 @HiltViewModel
 class ClassifyViewModel @Inject constructor(
     private val transactionDao: TransactionDao,
-    private val categoryDao: CategoryDao
+    private val categoryDao: CategoryDao,
+    private val repository: ExpenseRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ClassifyUiState())
@@ -58,13 +60,13 @@ class ClassifyViewModel @Inject constructor(
                 categoryId = category.id,
                 isManuallyEdited = true
             )
-            transactionDao.updateTransaction(updatedTransaction)
+            repository.updateTransaction(updatedTransaction)
         }
     }
     
     fun deleteTransaction(transaction: Transaction) {
         viewModelScope.launch {
-            transactionDao.deleteTransaction(transaction)
+            repository.deleteTransaction(transaction)
         }
     }
     
@@ -75,8 +77,8 @@ class ClassifyViewModel @Inject constructor(
                 amount = newAmount,
                 isManuallyEdited = true
             )
-            transactionDao.updateTransaction(updatedTransaction)
-            Log.d("ClassifyViewModel", "Transaction updated in database")
+            repository.updateTransaction(updatedTransaction)
+            Log.d("ClassifyViewModel", "Transaction updated via repository")
         }
     }
 }
