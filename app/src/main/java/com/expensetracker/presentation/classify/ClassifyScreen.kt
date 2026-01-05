@@ -5,15 +5,19 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -112,6 +116,19 @@ fun ClassifyScreen(
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    // Month and Date Selector
+                    MonthDateSelector(
+                        selectedYear = uiState.selectedYear,
+                        selectedMonth = uiState.selectedMonth,
+                        selectedDate = uiState.selectedDate,
+                        onPreviousMonth = { viewModel.goToPreviousMonth() },
+                        onNextMonth = { viewModel.goToNextMonth() },
+                        onDateSelected = { viewModel.selectDate(it) },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    
                     // Uncategorized Transactions Section
                     Text(
                         text = "Uncategorized Transactions (${uiState.uncategorizedTransactions.size})",
@@ -685,4 +702,94 @@ fun TransactionEditDialogWithoutDelete(
             }
         }
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MonthDateSelector(
+    selectedYear: Int,
+    selectedMonth: Int,
+    selectedDate: Int?,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onDateSelected: (Int?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val currentCalendar = java.util.Calendar.getInstance()
+    val currentYear = currentCalendar.get(java.util.Calendar.YEAR)
+    val currentMonth = currentCalendar.get(java.util.Calendar.MONTH)
+    val currentDay = currentCalendar.get(java.util.Calendar.DAY_OF_MONTH)
+    
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Month selector with arrows
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onPreviousMonth) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Previous Month"
+                )
+            }
+            
+            Text(
+                text = DateUtils.formatMonthYear(selectedYear, selectedMonth),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            IconButton(onClick = onNextMonth) {
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = "Next Month"
+                )
+            }
+        }
+        
+        // Date tabs
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // "All" chip to show entire month
+            FilterChip(
+                selected = selectedDate == null,
+                onClick = { onDateSelected(null) },
+                label = { Text("All") }
+            )
+            
+            // Date chips for each day in the month
+            val daysInMonth = DateUtils.getDaysInMonth(selectedYear, selectedMonth)
+            daysInMonth.forEach { day ->
+                val isToday = selectedYear == currentYear && 
+                             selectedMonth == currentMonth && 
+                             day == currentDay
+                
+                FilterChip(
+                    selected = selectedDate == day,
+                    onClick = { onDateSelected(day) },
+                    label = { 
+                        Text(
+                            text = day.toString(),
+                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    colors = if (isToday && selectedDate != day) {
+                        FilterChipDefaults.filterChipColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        )
+                    } else {
+                        FilterChipDefaults.filterChipColors()
+                    }
+                )
+            }
+        }
+    }
 }

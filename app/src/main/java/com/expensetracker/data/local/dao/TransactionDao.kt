@@ -51,11 +51,9 @@ interface TransactionDao {
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
     
-    @Query("""
-        SELECT t.* FROM transactions t
-        INNER JOIN categories c ON t.categoryId = c.id
-        WHERE c.name = 'Others'
-        ORDER BY t.timestamp DESC
-    """)
+    @Query("SELECT * FROM transactions WHERE (categoryId IS NULL OR categoryId = (SELECT id FROM categories WHERE name = 'Others' COLLATE NOCASE)) ORDER BY timestamp DESC")
     fun getUncategorizedTransactions(): Flow<List<Transaction>>
+    
+    @Query("SELECT * FROM transactions WHERE (categoryId IS NULL OR categoryId = (SELECT id FROM categories WHERE name = 'Others' COLLATE NOCASE)) AND timestamp BETWEEN :startTime AND :endTime ORDER BY timestamp DESC")
+    fun getUncategorizedTransactionsByTimeRange(startTime: Long, endTime: Long): Flow<List<Transaction>>
 }
