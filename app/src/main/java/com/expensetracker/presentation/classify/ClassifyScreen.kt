@@ -432,8 +432,11 @@ fun FloatingTransactionCard(
             .width(300.dp)
             .zIndex(1000f)
             .offset {
-                // Use exact offset from touch position
-                IntOffset(offset.x.toInt(), offset.y.toInt())
+                // Center the card horizontally under the finger
+                IntOffset(
+                    x = (offset.x - 150.dp.toPx()).toInt(),
+                    y = offset.y.toInt()
+                )
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
