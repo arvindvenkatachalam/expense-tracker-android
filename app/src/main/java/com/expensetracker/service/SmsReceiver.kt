@@ -93,8 +93,11 @@ class SmsReceiver : BroadcastReceiver() {
                     
                     // Show appropriate notification based on category
                     val category = repository.getCategoryById(categoryId)
+                    Log.d(TAG, "Category ID: $categoryId, Category Name: ${category?.name}")
+                    
                     if (category?.name?.equals("Others", ignoreCase = true) == true) {
                         // Show special notification for uncategorized transactions
+                        Log.d(TAG, "Showing Others category notification for ${parsedTransaction.merchant}")
                         NotificationHelper.showOthersCategoryNotification(
                             context,
                             parsedTransaction.merchant,
@@ -102,6 +105,7 @@ class SmsReceiver : BroadcastReceiver() {
                         )
                     } else {
                         // Show normal transaction notification
+                        Log.d(TAG, "Showing normal notification for ${parsedTransaction.merchant}, category: ${category?.name}")
                         NotificationHelper.showTransactionNotification(
                             context,
                             parsedTransaction.merchant,
