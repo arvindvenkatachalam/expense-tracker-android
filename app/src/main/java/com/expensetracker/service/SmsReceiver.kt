@@ -89,13 +89,11 @@ class SmsReceiver : BroadcastReceiver() {
                     
                     // Insert into database
                     val id = repository.insertTransaction(transaction)
-                    Log.d(TAG, "Transaction inserted with ID: $id")
+                    Log.d(TAG, "Transaction inserted with ID: $id, Category ID: $categoryId")
                     
                     // Show appropriate notification based on category
-                    val category = repository.getCategoryById(categoryId)
-                    Log.d(TAG, "Category ID: $categoryId, Category Name: ${category?.name}")
-                    
-                    if (category?.name?.equals("Others", ignoreCase = true) == true) {
+                    // Category ID 7 is "Others" - check ID directly for reliability
+                    if (categoryId == 7L) {
                         // Show special notification for uncategorized transactions
                         Log.d(TAG, "Showing Others category notification for ${parsedTransaction.merchant}")
                         NotificationHelper.showOthersCategoryNotification(
@@ -105,6 +103,7 @@ class SmsReceiver : BroadcastReceiver() {
                         )
                     } else {
                         // Show normal transaction notification
+                        val category = repository.getCategoryById(categoryId)
                         Log.d(TAG, "Showing normal notification for ${parsedTransaction.merchant}, category: ${category?.name}")
                         NotificationHelper.showTransactionNotification(
                             context,
