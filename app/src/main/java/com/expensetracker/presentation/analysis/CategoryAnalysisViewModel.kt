@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.expensetracker.data.local.entity.Category
 import com.expensetracker.data.repository.ExpenseRepository
 import com.expensetracker.presentation.dashboard.CategoryExpense
+import com.expensetracker.util.DateSelectionManager
 import com.expensetracker.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -22,16 +23,15 @@ data class AnalysisUiState(
 
 @HiltViewModel
 class CategoryAnalysisViewModel @Inject constructor(
-    private val repository: ExpenseRepository
+    private val repository: ExpenseRepository,
+    private val dateSelectionManager: DateSelectionManager
 ) : ViewModel() {
     
-    // Current date as default
-    private val currentCalendar = Calendar.getInstance()
-    private val _selectedYear = MutableStateFlow(currentCalendar.get(Calendar.YEAR))
-    private val _selectedMonth = MutableStateFlow(currentCalendar.get(Calendar.MONTH))
-    private val _selectedDate = MutableStateFlow<Int?>(currentCalendar.get(Calendar.DAY_OF_MONTH))
-    
-    private val timeRange = combine(_selectedYear, _selectedMonth, _selectedDate) { year, month, date ->
+    private val timeRange = combine(
+        dateSelectionManager.selectedYear,
+        dateSelectionManager.selectedMonth,
+        dateSelectionManager.selectedDate
+    ) { year, month, date ->
         if (date != null) {
             DateUtils.getDateRange(year, month, date)
         } else {
@@ -48,9 +48,9 @@ class CategoryAnalysisViewModel @Inject constructor(
     val uiState: StateFlow<AnalysisUiState> = combine(
         transactions,
         categories,
-        _selectedYear,
-        _selectedMonth,
-        _selectedDate
+        dateSelectionManager.selectedYear,
+        dateSelectionManager.selectedMonth,
+        dateSelectionManager.selectedDate
     ) { trans, cats, year, month, date ->
         val debitTransactions = trans.filter { it.transactionType == "DEBIT" }
         val totalExpenses = debitTransactions.sumOf { it.amount }
@@ -87,24 +87,14 @@ class CategoryAnalysisViewModel @Inject constructor(
     
     
     fun selectDate(date: Int?) {
-        _selectedDate.value = date
+        dateSelectionManager.selectDate(date)
     }
     
     fun goToPreviousMonth() {
-        val calendar = Calendar.getInstance()
-        calendar.set(_selectedYear.value, _selectedMonth.value, 1)
-        calendar.add(Calendar.MONTH, -1)
-        _selectedYear.value = calendar.get(Calendar.YEAR)
-        _selectedMonth.value = calendar.get(Calendar.MONTH)
-        _selectedDate.value = null
+        dateSelectionManager.goToPreviousMonth()
     }
     
     fun goToNextMonth() {
-        val calendar = Calendar.getInstance()
-        calendar.set(_selectedYear.value, _selectedMonth.value, 1)
-        calendar.add(Calendar.MONTH, 1)
-        _selectedYear.value = calendar.get(Calendar.YEAR)
-        _selectedMonth.value = calendar.get(Calendar.MONTH)
-        _selectedDate.value = null
+        dateSelectionManager.goToNextMonth()
     }
 }
