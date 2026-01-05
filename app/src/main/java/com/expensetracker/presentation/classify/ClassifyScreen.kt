@@ -281,6 +281,15 @@ fun ClassifyScreen(
                         offset = info.offset
                     )
                 }
+                }
+            }
+            
+            // Floating dragged item - Always visible when dragging
+            dragInfo?.let { info ->
+                FloatingTransactionCard(
+                    transaction = info.transaction,
+                    offset = info.offset
+                )
             }
         }
     }
@@ -531,7 +540,7 @@ fun CategoryDropTarget(
             ) {
                 Text(
                     text = category.icon,
-                    style = MaterialTheme.typography.headlineSmall
+                    style = MaterialTheme.typography.titleLarge
                 )
             }
             
@@ -605,7 +614,7 @@ fun ActionCard(
             ) {
                 Text(
                     text = icon,
-                    style = MaterialTheme.typography.headlineSmall
+                    style = MaterialTheme.typography.titleLarge
                 )
             }
             
