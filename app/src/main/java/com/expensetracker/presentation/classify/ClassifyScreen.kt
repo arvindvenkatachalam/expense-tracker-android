@@ -75,60 +75,57 @@ fun ClassifyScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (uiState.uncategorizedTransactions.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Month and Date Selector - Always visible
+            MonthDateSelector(
+                selectedYear = uiState.selectedYear,
+                selectedMonth = uiState.selectedMonth,
+                selectedDate = uiState.selectedDate,
+                onPreviousMonth = { viewModel.goToPreviousMonth() },
+                onNextMonth = { viewModel.goToNextMonth() },
+                onDateSelected = { viewModel.selectDate(it) },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            
+            // Content based on state
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "🎉 All Caught Up!",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "No uncategorized transactions",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    CircularProgressIndicator()
                 }
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
+            } else if (uiState.uncategorizedTransactions.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "🎉 All Caught Up!",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "No uncategorized transactions",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Month and Date Selector
-                    MonthDateSelector(
-                        selectedYear = uiState.selectedYear,
-                        selectedMonth = uiState.selectedMonth,
-                        selectedDate = uiState.selectedDate,
-                        onPreviousMonth = { viewModel.goToPreviousMonth() },
-                        onNextMonth = { viewModel.goToNextMonth() },
-                        onDateSelected = { viewModel.selectDate(it) },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                    
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-                    
                     // Uncategorized Transactions Section
                     Text(
                         text = "Uncategorized Transactions (${uiState.uncategorizedTransactions.size})",
