@@ -40,11 +40,6 @@ fun DashboardScreen(
     var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
     
-    // Force refresh when screen is displayed (helps after PDF import)
-    LaunchedEffect(Unit) {
-        viewModel.forceRefresh()
-    }
-    
     Scaffold(
         topBar = {
             TopAppBar(
