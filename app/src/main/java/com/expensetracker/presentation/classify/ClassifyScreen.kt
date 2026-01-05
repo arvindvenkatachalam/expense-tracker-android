@@ -273,15 +273,6 @@ fun ClassifyScreen(
                         }
                     }
                 }
-                
-                // Floating dragged item
-                dragInfo?.let { info ->
-                    FloatingTransactionCard(
-                        transaction = info.transaction,
-                        offset = info.offset
-                    )
-                }
-                }
             }
             
             // Floating dragged item - Always visible when dragging
