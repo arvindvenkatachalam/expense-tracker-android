@@ -36,6 +36,9 @@ class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Log.d(TAG, "SMS received")
         
+        // Ensure notification channels are created (fallback if app didn't initialize properly)
+        NotificationHelper.createNotificationChannels(context)
+        
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             return
         }
