@@ -428,10 +428,9 @@ fun FloatingTransactionCard(
         modifier = Modifier
             .width(300.dp)
             .zIndex(1000f)
-            .graphicsLayer {
-                // Center the card horizontally under the finger, slightly above vertically
-                translationX = offset.x - (300.dp.toPx() / 2f)
-                translationY = offset.y - 60.dp.toPx()
+            .offset {
+                // Use exact offset from touch position
+                IntOffset(offset.x.toInt(), offset.y.toInt())
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
