@@ -83,46 +83,9 @@ class SmsReceiver : BroadcastReceiver() {
         }
         
         Log.d(TAG, "Processing NEW SMS (not duplicate)")
-
         
         // Ensure notification channels are created (fallback if app didn't initialize properly)
-        try {
-            NotificationHelper.createNotificationChannels(context)
-            Log.d(TAG, "Channels created/verified")
-        } catch (e: Exception) {
-            Log.e(TAG, "Channel creation FAILED", e)
-        }
-        
-        // IMMEDIATE TEST: Show notification RIGHT NOW to verify system works
-        try {
-            Log.d(TAG, ">>> ATTEMPTING TEST NOTIFICATION <<<")
-            
-            // Also show a Toast to verify this code is executing
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                android.widget.Toast.makeText(
-                    context,
-                    "SMS Received - Showing Notification",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
-            
-            NotificationHelper.showOthersCategoryNotification(
-                context,
-                "TEST MERCHANT",
-                999.99
-            )
-            Log.d(TAG, ">>> TEST NOTIFICATION CALL COMPLETED <<<")
-        } catch (e: Exception) {
-            Log.e(TAG, ">>> TEST NOTIFICATION EXCEPTION <<<", e)
-            // Show error in Toast too
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                android.widget.Toast.makeText(
-                    context,
-                    "Notification FAILED: ${e.message}",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
-        }
+        NotificationHelper.createNotificationChannels(context)
         
         // Continue with SMS parsing (action already checked above)
         // Reuse 'messages' from deduplication check above
