@@ -94,6 +94,15 @@ class SmsReceiver : BroadcastReceiver() {
                     val id = repository.insertTransaction(transaction)
                     Log.d(TAG, "Transaction inserted with ID: $id, Category ID: $categoryId")
                     
+                    // CRITICAL: Show notification IMMEDIATELY while coroutine is still alive
+                    // Get category for display (but don't wait if it fails)
+                    val category = try {
+                        repository.getCategoryById(categoryId)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to get category", e)
+                        null
+                    }
+                    
                     // Show appropriate notification based on category
                     // Category ID 7 is "Others" - check ID directly for reliability
                     if (categoryId == 7L) {
@@ -106,7 +115,6 @@ class SmsReceiver : BroadcastReceiver() {
                         )
                     } else {
                         // Show normal transaction notification
-                        val category = repository.getCategoryById(categoryId)
                         Log.d(TAG, "Showing normal notification for ${parsedTransaction.merchant}, category: ${category?.name}")
                         NotificationHelper.showTransactionNotification(
                             context,
@@ -115,6 +123,8 @@ class SmsReceiver : BroadcastReceiver() {
                             category?.name ?: "Others"
                         )
                     }
+                    
+                    Log.d(TAG, "Notification call completed")
                     
                 } catch (e: Exception) {
                     Log.e(TAG, "Error processing transaction", e)
