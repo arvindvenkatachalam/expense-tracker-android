@@ -37,6 +37,15 @@ class TransactionParser {
         )
         
         private val ACCOUNT_PATTERN = Pattern.compile("(?:A/c|account|card)\\s*(?:no\\.?)?\\s*(?:XX|\\*\\*|ending)?\\s*(\\d{4})", Pattern.CASE_INSENSITIVE)
+        
+        // Keywords that indicate this is NOT a transaction (statements, bills, alerts)
+        private val EXCLUDE_KEYWORDS = listOf(
+            "statement", "total amount due", "min amount due", "minimum due",
+            "payment due", "bill generated", "outstanding", "due date",
+            "available balance", "avl bal", "current balance", "balance is",
+            "reward points", "cashpoints", "credit limit", "limit available",
+            "auto debit", "emi deducted", "emi due", "standing instruction"
+        )
     }
     
     fun isBankSms(sender: String): Boolean {
@@ -47,6 +56,13 @@ class TransactionParser {
     fun parseTransaction(smsBody: String, sender: String): ParsedTransaction? {
         try {
             Log.d(TAG, "Parsing SMS from $sender: $smsBody")
+            
+            // Filter out statement/bill notifications - these are NOT transactions
+            val lowerBody = smsBody.lowercase()
+            if (EXCLUDE_KEYWORDS.any { lowerBody.contains(it) }) {
+                Log.d(TAG, "Skipping non-transaction SMS (statement/bill/alert)")
+                return null
+            }
             
             // Extract amount
             val amount = extractAmount(smsBody) ?: run {
