@@ -65,10 +65,17 @@ class TransactionParser {
         try {
             Log.d(TAG, "Parsing SMS from $sender: $smsBody")
             
-            // Filter out statement/bill notifications - these are NOT transactions
             val lowerBody = smsBody.lowercase()
-            if (EXCLUDE_KEYWORDS.any { lowerBody.contains(it) }) {
-                Log.d(TAG, "Skipping non-transaction SMS (statement/bill/alert)")
+            
+            // Smart filtering: Only exclude if it's NOT a transaction
+            // Check if SMS contains transaction keywords (debited, credited, paid, etc.)
+            val hasTransactionKeyword = DEBIT_KEYWORDS.any { lowerBody.contains(it) } || 
+                                       CREDIT_KEYWORDS.any { lowerBody.contains(it) }
+            
+            // Only apply exclusion filter if NO transaction keywords found
+            // This prevents legitimate transactions with balance info from being excluded
+            if (!hasTransactionKeyword && EXCLUDE_KEYWORDS.any { lowerBody.contains(it) }) {
+                Log.d(TAG, "Skipping non-transaction SMS (statement/bill/alert/promo)")
                 return null
             }
             
