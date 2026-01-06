@@ -125,8 +125,7 @@ class SmsReceiver : BroadcastReceiver() {
         }
         
         // Continue with SMS parsing (action already checked above)
-        
-        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
+        // Reuse 'messages' from deduplication check above
         
         for (smsMessage in messages) {
             val sender = smsMessage.displayOriginatingAddress
