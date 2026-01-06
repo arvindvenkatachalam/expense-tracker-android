@@ -143,7 +143,7 @@ object NotificationHelper {
                 .setContentTitle("Transaction Needs Categorization")
                 .setContentText("₹$amount at $merchant")
                 .setSubText("Tap to categorize")
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)  // Use system icon to rule out icon issues
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
