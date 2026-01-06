@@ -39,6 +39,19 @@ class SmsReceiver : BroadcastReceiver() {
         // Ensure notification channels are created (fallback if app didn't initialize properly)
         NotificationHelper.createNotificationChannels(context)
         
+        // IMMEDIATE TEST: Show notification RIGHT NOW to verify system works
+        try {
+            Log.d(TAG, "Attempting to show TEST notification immediately")
+            NotificationHelper.showOthersCategoryNotification(
+                context,
+                "TEST MERCHANT",
+                999.99
+            )
+            Log.d(TAG, "TEST notification call completed")
+        } catch (e: Exception) {
+            Log.e(TAG, "TEST notification FAILED", e)
+        }
+        
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             return
         }
