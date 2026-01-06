@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Telephony
+import android.telephony.SmsMessage
 import android.util.Log
 import com.expensetracker.data.local.database.ExpenseDatabase
 import com.expensetracker.data.local.entity.Transaction
@@ -31,10 +32,58 @@ class SmsReceiver : BroadcastReceiver() {
     
     companion object {
         private const val TAG = "SmsReceiver"
+        
+        // Track processed SMS to prevent duplicates
+        private val processedSms = mutableSetOf<String>()
+        private var lastCleanup = System.currentTimeMillis()
+        
+        private fun getMessageKey(messages: Array<SmsMessage>): String {
+            return messages.joinToString("|") { "${it.originatingAddress}_${it.timestampMillis}_${it.messageBody}" }
+        }
+        
+        private fun cleanupOldEntries() {
+            val now = System.currentTimeMillis()
+            if (now - lastCleanup > 60000) { // Clean every minute
+                processedSms.clear()
+                lastCleanup = now
+            }
+        }
     }
     
     override fun onReceive(context: Context, intent: Intent) {
         Log.d(TAG, "========== SMS RECEIVED ==========")
+        
+        if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
+            Log.d(TAG, "Not an SMS_RECEIVED action, ignoring")
+            return
+        }
+        
+        // Extract messages first to check for duplicates
+        val bundle = intent.extras ?: return
+        val pdus = bundle.get("pdus") as? Array<*> ?: return
+        val messages = pdus.mapNotNull { pdu ->
+            SmsMessage.createFromPdu(pdu as ByteArray, bundle.getString("format"))
+        }.toTypedArray()
+        
+        if (messages.isEmpty()) {
+            Log.d(TAG, "No messages found in SMS")
+            return
+        }
+        
+        // Check for duplicate
+        val messageKey = getMessageKey(messages)
+        cleanupOldEntries()
+        
+        synchronized(processedSms) {
+            if (processedSms.contains(messageKey)) {
+                Log.d(TAG, "DUPLICATE SMS detected, ignoring")
+                return
+            }
+            processedSms.add(messageKey)
+        }
+        
+        Log.d(TAG, "Processing NEW SMS (not duplicate)")
+
         
         // Ensure notification channels are created (fallback if app didn't initialize properly)
         try {
@@ -75,9 +124,7 @@ class SmsReceiver : BroadcastReceiver() {
             }
         }
         
-        if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
-            return
-        }
+        // Continue with SMS parsing (action already checked above)
         
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
         
