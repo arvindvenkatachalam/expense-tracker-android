@@ -75,25 +75,33 @@ object NotificationHelper {
         amount: Double,
         category: String
     ) {
-        val intent = Intent(context, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID_TRANSACTIONS)
-            .setContentTitle("Transaction Detected")
-            .setContentText("₹$amount at $merchant")
-            .setSubText("Categorized as $category")
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
-        
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(notificationIdCounter++, notification)
+        try {
+            android.util.Log.d(TAG, "Showing transaction notification for $merchant, amount: $amount, category: $category")
+            
+            val intent = Intent(context, MainActivity::class.java)
+            val notifId = notificationIdCounter++
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                notifId,  // Use unique request code
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT  // Standardized flags
+            )
+            
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID_TRANSACTIONS)
+                .setContentTitle("Transaction Detected")
+                .setContentText("₹$amount at $merchant")
+                .setSubText("Categorized as $category")
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .build()
+            
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.notify(notifId, notification)
+            android.util.Log.d(TAG, "Transaction notification shown successfully with ID: $notifId")
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Error showing transaction notification", e)
+        }
     }
     
     fun showOthersCategoryNotification(
@@ -110,9 +118,10 @@ object NotificationHelper {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             
+            val notifId = notificationIdCounter++
             val pendingIntent = PendingIntent.getActivity(
                 context,
-                0,
+                notifId,  // Use unique request code matching notification ID
                 intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
@@ -128,7 +137,6 @@ object NotificationHelper {
                 .build()
             
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val notifId = notificationIdCounter++
             notificationManager.notify(notifId, notification)
             android.util.Log.d(TAG, "Others notification shown successfully with ID: $notifId")
         } catch (e: Exception) {
