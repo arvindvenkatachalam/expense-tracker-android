@@ -15,8 +15,8 @@ object NotificationHelper {
     private const val TAG = "NotificationHelper"
     private const val CHANNEL_ID_MONITORING = "transaction_monitoring"
     private const val CHANNEL_ID_TRANSACTIONS = "new_transactions"
+    private const val CHANNEL_ID_OTHERS = "transaction_needs_categorization"
     private const val NOTIFICATION_ID_SERVICE = 1
-    private var notificationIdCounter = 100
     
     fun createNotificationChannels(context: Context) {
         try {
@@ -42,9 +42,20 @@ object NotificationHelper {
                     description = "Notifies you when new transactions are detected"
                 }
                 
+                // Channel for transactions needing categorization (higher priority)
+                val othersChannel = NotificationChannel(
+                    CHANNEL_ID_OTHERS,
+                    "Transactions to Categorize",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Transactions that need manual categorization"
+                    enableVibration(true)
+                }
+                
                 notificationManager.createNotificationChannel(monitoringChannel)
                 notificationManager.createNotificationChannel(transactionChannel)
-                android.util.Log.d(TAG, "Notification channels created successfully")
+                notificationManager.createNotificationChannel(othersChannel)
+                android.util.Log.d(TAG, "Notification channels created successfully (3 channels)")
             }
         } catch (e: Exception) {
             android.util.Log.e(TAG, "Error creating notification channels", e)
@@ -79,7 +90,8 @@ object NotificationHelper {
             android.util.Log.d(TAG, "Showing transaction notification for $merchant, amount: $amount, category: $category")
             
             val intent = Intent(context, MainActivity::class.java)
-            val notifId = notificationIdCounter++
+            // Use timestamp-based ID to prevent overwrites
+            val notifId = System.currentTimeMillis().toInt()
             val pendingIntent = PendingIntent.getActivity(
                 context,
                 notifId,  // Use unique request code
@@ -118,7 +130,8 @@ object NotificationHelper {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             
-            val notifId = notificationIdCounter++
+            // Use timestamp-based ID to prevent overwrites
+            val notifId = System.currentTimeMillis().toInt()
             val pendingIntent = PendingIntent.getActivity(
                 context,
                 notifId,  // Use unique request code matching notification ID
@@ -126,14 +139,15 @@ object NotificationHelper {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
             
-            val notification = NotificationCompat.Builder(context, CHANNEL_ID_TRANSACTIONS)
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID_OTHERS)
                 .setContentTitle("Transaction Needs Categorization")
                 .setContentText("₹$amount at $merchant")
                 .setSubText("Tap to categorize")
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .build()
             
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
