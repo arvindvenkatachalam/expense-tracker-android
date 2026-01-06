@@ -34,22 +34,45 @@ class SmsReceiver : BroadcastReceiver() {
     }
     
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d(TAG, "SMS received")
+        Log.d(TAG, "========== SMS RECEIVED ==========")
         
         // Ensure notification channels are created (fallback if app didn't initialize properly)
-        NotificationHelper.createNotificationChannels(context)
+        try {
+            NotificationHelper.createNotificationChannels(context)
+            Log.d(TAG, "Channels created/verified")
+        } catch (e: Exception) {
+            Log.e(TAG, "Channel creation FAILED", e)
+        }
         
         // IMMEDIATE TEST: Show notification RIGHT NOW to verify system works
         try {
-            Log.d(TAG, "Attempting to show TEST notification immediately")
+            Log.d(TAG, ">>> ATTEMPTING TEST NOTIFICATION <<<")
+            
+            // Also show a Toast to verify this code is executing
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(
+                    context,
+                    "SMS Received - Showing Notification",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+            
             NotificationHelper.showOthersCategoryNotification(
                 context,
                 "TEST MERCHANT",
                 999.99
             )
-            Log.d(TAG, "TEST notification call completed")
+            Log.d(TAG, ">>> TEST NOTIFICATION CALL COMPLETED <<<")
         } catch (e: Exception) {
-            Log.e(TAG, "TEST notification FAILED", e)
+            Log.e(TAG, ">>> TEST NOTIFICATION EXCEPTION <<<", e)
+            // Show error in Toast too
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(
+                    context,
+                    "Notification FAILED: ${e.message}",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
         }
         
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
