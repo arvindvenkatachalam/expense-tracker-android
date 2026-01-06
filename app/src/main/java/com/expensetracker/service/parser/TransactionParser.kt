@@ -38,13 +38,21 @@ class TransactionParser {
         
         private val ACCOUNT_PATTERN = Pattern.compile("(?:A/c|account|card)\\s*(?:no\\.?)?\\s*(?:XX|\\*\\*|ending)?\\s*(\\d{4})", Pattern.CASE_INSENSITIVE)
         
-        // Keywords that indicate this is NOT a transaction (statements, bills, alerts)
+        // Keywords that indicate this is NOT a transaction (statements, bills, alerts, promotions)
         private val EXCLUDE_KEYWORDS = listOf(
+            // Statements and bills
             "statement", "total amount due", "min amount due", "minimum due",
             "payment due", "bill generated", "outstanding", "due date",
+            // Balance alerts
             "available balance", "avl bal", "current balance", "balance is",
+            // Rewards and limits
             "reward points", "cashpoints", "credit limit", "limit available",
-            "auto debit", "emi deducted", "emi due", "standing instruction"
+            // Auto-debit and EMI
+            "auto debit", "emi deducted", "emi due", "standing instruction",
+            // Promotional and vouchers
+            "voucher", "congrats", "congratulations", "offer", "cashback offer",
+            "claim now", "redeem", "promo code", "discount code", "coupon",
+            "t&c apply", "terms and conditions"
         )
     }
     
