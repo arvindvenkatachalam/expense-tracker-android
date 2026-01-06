@@ -150,11 +150,29 @@ object NotificationHelper {
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .build()
             
+            android.util.Log.d(TAG, "About to call notificationManager.notify() with ID: $notifId")
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.notify(notifId, notification)
-            android.util.Log.d(TAG, "Others notification shown successfully with ID: $notifId")
+            android.util.Log.d(TAG, "notificationManager.notify() completed with ID: $notifId")
+            
+            // Show Toast to confirm this line was reached
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(
+                    context,
+                    "Notification.notify() called with ID: $notifId",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+            
         } catch (e: Exception) {
             android.util.Log.e(TAG, "Error showing Others category notification", e)
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(
+                    context,
+                    "NotificationHelper Exception: ${e.message}",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 }
