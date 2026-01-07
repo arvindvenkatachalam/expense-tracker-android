@@ -156,8 +156,29 @@ class TransactionParser {
     private fun determineTransactionType(smsBody: String): TransactionType {
         val lowerBody = smsBody.lowercase()
         
+        // Check for keywords
         val hasDebitKeyword = DEBIT_KEYWORDS.any { lowerBody.contains(it) }
         val hasCreditKeyword = CREDIT_KEYWORDS.any { lowerBody.contains(it) }
+        
+        // If both keywords present (e.g., UPI SMS mentioning both accounts),
+        // prioritize the keyword that appears FIRST (applies to YOUR account)
+        if (hasDebitKeyword && hasCreditKeyword) {
+            val firstDebitIndex = DEBIT_KEYWORDS.mapNotNull { keyword ->
+                val index = lowerBody.indexOf(keyword)
+                if (index >= 0) index else null
+            }.minOrNull() ?: Int.MAX_VALUE
+            
+            val firstCreditIndex = CREDIT_KEYWORDS.mapNotNull { keyword ->
+                val index = lowerBody.indexOf(keyword)
+                if (index >= 0) index else null
+            }.minOrNull() ?: Int.MAX_VALUE
+            
+            return if (firstDebitIndex < firstCreditIndex) {
+                TransactionType.DEBIT
+            } else {
+                TransactionType.CREDIT
+            }
+        }
         
         return when {
             hasDebitKeyword && !hasCreditKeyword -> TransactionType.DEBIT
