@@ -110,9 +110,11 @@ class SmsReceiver : BroadcastReceiver() {
                 continue
             }
             
+            Log.d(TAG, "Parsed: Amount=${parsedTransaction.amount}, Merchant=${parsedTransaction.merchant}, Type=${parsedTransaction.transactionType}")
+            
             // Process debit and unknown transactions (unknown might be UPI)
             if (parsedTransaction.transactionType == TransactionType.CREDIT) {
-                Log.d(TAG, "Credit transaction, ignoring")
+                Log.d(TAG, "Credit transaction, skipping (no notification)")
                 continue
             }
             
