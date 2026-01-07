@@ -125,13 +125,31 @@ class TransactionParser {
     }
     
     private fun extractAmount(smsBody: String): Double? {
+        // First, try to find amounts that are NOT balance amounts
+        // Balance patterns to avoid: "avl bal", "available balance", "current balance"
+        val balancePattern = Pattern.compile("(?:avl|available|current)\\s*(?:bal|balance)\\s*(?:is)?\\s*(?:Rs\\.?|INR)?\\s*([\\d,]+(?:\\.\\d{2})?)", Pattern.CASE_INSENSITIVE)
+        val balanceMatcher = balancePattern.matcher(smsBody)
+        val balanceAmount = if (balanceMatcher.find()) {
+            balanceMatcher.group(1)?.replace(",", "")?.toDoubleOrNull()
+        } else null
+        
+        // Extract all amounts from SMS
         for (pattern in AMOUNT_PATTERNS) {
             val matcher = pattern.matcher(smsBody)
-            if (matcher.find()) {
+            while (matcher.find()) {
                 val amountStr = matcher.group(1)?.replace(",", "") ?: continue
-                return amountStr.toDoubleOrNull()
+                val amount = amountStr.toDoubleOrNull() ?: continue
+                
+                // Skip if this amount matches the balance amount
+                if (balanceAmount != null && Math.abs(amount - balanceAmount) < 0.01) {
+                    continue
+                }
+                
+                // Return first non-balance amount found
+                return amount
             }
         }
+        
         return null
     }
     
