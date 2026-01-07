@@ -12,7 +12,15 @@ class TransactionParser {
         private val BANK_SENDERS = listOf(
             "HDFCBK", "HDFC", "ICICIB", "ICICI", "SBIINB", "SBI",
             "AXISBK", "AXIS", "KOTAKBNK", "KOTAK", "PNBSMS", "PNB",
-            "BOIIND", "BOI", "CBSSBI", "CANBNK", "UNIONBK"
+            "BOIIND", "BOI", "CBSSBI", "CANBNK", "CANARA", "UNIONBK",
+            "TMBSMS", "TMB",  // Tamilnad Mercantile Bank
+            "IDFCFB", "IDFC",  // IDFC First Bank
+            "YESBNK", "YES",   // Yes Bank
+            "INDBNK", "INDIAN",  // Indian Bank
+            "SCBANK", "SC",    // Standard Chartered
+            "CITIBK", "CITI",  // Citibank
+            "HSBCIN", "HSBC",  // HSBC
+            "DEUTIN", "DEUTSCHE"  // Deutsche Bank
         )
         
         // Regex patterns for parsing
@@ -184,6 +192,14 @@ class TransactionParser {
             normalizedSender.contains("BOI") -> "Bank of India"
             normalizedSender.contains("CANARA") -> "Canara Bank"
             normalizedSender.contains("UNION") -> "Union Bank"
+            normalizedSender.contains("TMB") -> "Tamilnad Mercantile Bank"
+            normalizedSender.contains("IDFC") -> "IDFC First Bank"
+            normalizedSender.contains("YES") -> "Yes Bank"
+            normalizedSender.contains("INDIAN") -> "Indian Bank"
+            normalizedSender.contains("SC") -> "Standard Chartered"
+            normalizedSender.contains("CITI") -> "Citibank"
+            normalizedSender.contains("HSBC") -> "HSBC"
+            normalizedSender.contains("DEUTSCHE") -> "Deutsche Bank"
             else -> "Bank"
         }
     }
