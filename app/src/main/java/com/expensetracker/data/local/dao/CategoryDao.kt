@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CategoryDao {
     
-    @Query("SELECT * FROM categories ORDER BY name ASC")
+    @Query("SELECT * FROM categories ORDER BY displayOrder ASC, name ASC")
     fun getAllCategories(): Flow<List<Category>>
     
     @Query("SELECT * FROM categories WHERE id = :categoryId")
@@ -27,6 +27,9 @@ interface CategoryDao {
     
     @Delete
     suspend fun deleteCategory(category: Category)
+    
+    @Query("SELECT * FROM categories ORDER BY displayOrder ASC, name ASC")
+    suspend fun getAllCategoriesDirect(): List<Category>
     
     @Query("DELETE FROM categories WHERE isDefault = 0")
     suspend fun deleteNonDefaultCategories()

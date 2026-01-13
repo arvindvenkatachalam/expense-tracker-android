@@ -10,5 +10,6 @@ data class Category(
     val name: String,
     val color: String, // Hex color code
     val icon: String,  // Material icon name or emoji
-    val isDefault: Boolean = false
+    val isDefault: Boolean = false,
+    val displayOrder: Int = 0 // Order for display in UI
 )

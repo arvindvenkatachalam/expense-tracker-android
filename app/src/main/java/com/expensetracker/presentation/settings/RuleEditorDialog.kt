@@ -21,8 +21,7 @@ fun RuleEditorDialog(
     rule: Rule? = null,  // null for creating new rule
     categories: List<Category>,
     onSave: (Rule) -> Unit,
-    onDismiss: () -> Unit,
-    onTestPattern: suspend (String, String, MatchType) -> Boolean
+    onDismiss: () -> Unit
 ) {
     var selectedCategoryId by remember(rule, categories) { 
         mutableLongStateOf(rule?.categoryId ?: categories.firstOrNull()?.id ?: 0L) 
@@ -30,12 +29,6 @@ fun RuleEditorDialog(
     var pattern by remember { mutableStateOf(rule?.pattern ?: "") }
     var selectedMatchType by remember { mutableStateOf(rule?.matchType ?: MatchType.CONTAINS) }
     var isActive by remember { mutableStateOf(rule?.isActive ?: true) }
-    
-    // Test pattern state
-    var testMerchant by remember { mutableStateOf("") }
-    var testResult by remember { mutableStateOf<Boolean?>(null) }
-    var isTesting by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
     
     var showCategoryDropdown by remember { mutableStateOf(false) }
     var showMatchTypeDropdown by remember { mutableStateOf(false) }
@@ -132,53 +125,6 @@ fun RuleEditorDialog(
                     Switch(
                         checked = isActive,
                         onCheckedChange = { isActive = it }
-                    )
-                }
-                
-                Divider()
-                
-                // Test Pattern Section
-                Text(
-                    "Test Pattern",
-                    style = MaterialTheme.typography.titleSmall
-                )
-                
-                OutlinedTextField(
-                    value = testMerchant,
-                    onValueChange = { testMerchant = it },
-                    label = { Text("Test Merchant Name") },
-                    placeholder = { Text("e.g., ZOMATO BANGALORE") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Button(
-                    onClick = {
-                        if (pattern.isNotBlank() && testMerchant.isNotBlank()) {
-                            isTesting = true
-                            coroutineScope.launch {
-                                testResult = onTestPattern(testMerchant, pattern, selectedMatchType)
-                                isTesting = false
-                            }
-                        }
-                    },
-                    enabled = pattern.isNotBlank() && testMerchant.isNotBlank() && !isTesting,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (isTesting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text("Test")
-                }
-                
-                testResult?.let { matches ->
-                    Text(
-                        text = if (matches) "✓ Match" else "✗ No Match",
-                        color = if (matches) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }

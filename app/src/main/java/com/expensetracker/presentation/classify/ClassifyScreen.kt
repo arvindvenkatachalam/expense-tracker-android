@@ -291,14 +291,16 @@ fun ClassifyScreen(
     }
     
     // Edit Dialog (without delete button)
-    transactionToEdit?.let { transaction ->
-        val category = uiState.categories.find { it.id == transaction.categoryId }
+    transactionToEdit?.let { editTransaction ->
+        // Always get the fresh transaction from the current list to ensure we have the latest data
+        val freshTransaction = uiState.uncategorizedTransactions.find { it.id == editTransaction.id } ?: editTransaction
+        val category = uiState.categories.find { it.id == freshTransaction.categoryId }
         TransactionEditDialogWithoutDelete(
-            transaction = transaction,
+            transaction = freshTransaction,
             category = category,
             onDismiss = { transactionToEdit = null },
             onSave = { newAmount ->
-                viewModel.updateTransactionAmount(transaction, newAmount)
+                viewModel.updateTransactionAmount(freshTransaction, newAmount)
                 transactionToEdit = null
             }
         )
@@ -636,7 +638,7 @@ fun TransactionEditDialogWithoutDelete(
     onDismiss: () -> Unit,
     onSave: (Double) -> Unit
 ) {
-    var amountText by remember { mutableStateOf(transaction.amount.toString()) }
+    var amountText by remember(transaction.amount) { mutableStateOf(transaction.amount.toString()) }
     
     AlertDialog(
         onDismissRequest = onDismiss,

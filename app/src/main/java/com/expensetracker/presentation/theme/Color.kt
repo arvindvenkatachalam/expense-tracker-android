@@ -19,6 +19,8 @@ val CategoryBills = Color(0xFFF44336)
 val CategoryEntertainment = Color(0xFFE91E63)
 val CategoryHealth = Color(0xFF4CAF50)
 val CategoryOthers = Color(0xFF9E9E9E)
+val CategoryDonation = Color(0xFF00BCD4)
+val CategorySnacks = Color(0xFFFFEB3B)
 
 fun getCategoryColor(colorHex: String): Color {
     return try {

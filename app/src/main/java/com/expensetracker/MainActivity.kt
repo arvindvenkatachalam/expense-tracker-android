@@ -116,8 +116,8 @@ fun MainScreen(initialRoute: String? = null) {
 
     val bottomNavItems = listOf(
         Screen.Dashboard,
-        Screen.Rules,
         Screen.Classify,
+        Screen.Rules,
         Screen.Settings
     )
 

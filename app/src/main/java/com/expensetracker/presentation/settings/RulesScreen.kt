@@ -183,7 +183,7 @@ fun RulesScreen(
     if (showEditorDialog) {
         RuleEditorDialog(
             rule = editingRule,
-            categories = categories,
+            categories = categories.filter { !it.name.equals("Others", ignoreCase = true) },
             onSave = { newRule ->
                 // DEBUG: Verify onSave is called
                 android.widget.Toast.makeText(
@@ -193,20 +193,30 @@ fun RulesScreen(
                 ).show()
                 
                 scope.launch {
-                    if (editingRule != null && editingRule!!.categoryId != newRule.categoryId) {
-                        // Category changed - check if we need to recategorize
-                        val count = viewModel.countMatchingTransactions(newRule.pattern, newRule.matchType)
-                        if (count > 0) {
-                            affectedTransactionCount = count
-                            pendingRuleUpdate = Pair(newRule, editingRule!!)
-                            showRecategorizeDialog = true
+                    if (editingRule != null) {
+                        // Check if any field that affects matching has changed
+                        val hasMatchingChange = editingRule!!.pattern != newRule.pattern ||
+                                               editingRule!!.matchType != newRule.matchType ||
+                                               editingRule!!.categoryId != newRule.categoryId
+                        
+                        if (hasMatchingChange) {
+                            // Check for matching transactions with the NEW pattern
+                            val count = viewModel.countMatchingTransactions(newRule.pattern, newRule.matchType)
+                            if (count > 0) {
+                                affectedTransactionCount = count
+                                pendingRuleUpdate = Pair(newRule, editingRule!!)
+                                showRecategorizeDialog = true
+                            } else {
+                                viewModel.updateRule(newRule, editingRule)
+                                showEditorDialog = false
+                                editingRule = null
+                            }
                         } else {
+                            // Only non-matching fields changed (e.g., priority, isActive)
                             viewModel.updateRule(newRule, editingRule)
+                            showEditorDialog = false
+                            editingRule = null
                         }
-                    } else if (editingRule != null) {
-                        viewModel.updateRule(newRule, editingRule)
-                        showEditorDialog = false
-                        editingRule = null
                     } else {
                         Log.d(TAG, "=== BRANCH: Adding NEW rule ===")
                         Log.d(TAG, "Rule pattern: '${newRule.pattern}', category: ${newRule.categoryId}, matchType: ${newRule.matchType}")
@@ -243,9 +253,6 @@ fun RulesScreen(
             onDismiss = {
                 showEditorDialog = false
                 editingRule = null
-            },
-            onTestPattern = { merchant, pattern, matchType ->
-                viewModel.testPattern(merchant, pattern, matchType)
             }
         )
     }
@@ -267,6 +274,8 @@ fun RulesScreen(
                         viewModel.updateRule(newRule, oldRule)
                         showRecategorizeDialog = false
                         pendingRuleUpdate = null
+                        showEditorDialog = false
+                        editingRule = null
                         snackbarHostState.showSnackbar(
                             "✓ Rule updated. $affectedTransactionCount transaction${if (affectedTransactionCount != 1) "s" else ""} recategorized."
                         )

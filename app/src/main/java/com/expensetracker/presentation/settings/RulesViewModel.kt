@@ -69,8 +69,9 @@ class RulesViewModel @Inject constructor(
             ruleDao.updateRule(rule)
             Log.d(TAG, "Rule updated: ${rule.pattern}")
             
-            // If category changed, recategorize all matching transactions
-            if (oldRule != null && oldRule.categoryId != rule.categoryId) {
+            // If oldRule is provided, recategorize matching transactions
+            // This handles changes to pattern, matchType, or category
+            if (oldRule != null) {
                 recategorizeMatchingTransactions(rule)
             }
         } catch (e: Exception) {

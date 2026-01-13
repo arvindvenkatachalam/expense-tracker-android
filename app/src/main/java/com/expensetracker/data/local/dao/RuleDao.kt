@@ -31,6 +31,9 @@ interface RuleDao {
     @Delete
     suspend fun deleteRule(rule: Rule)
     
+    @Query("SELECT * FROM rules ORDER BY priority DESC")
+    suspend fun getAllRulesDirect(): List<Rule>
+    
     @Query("DELETE FROM rules")
     suspend fun deleteAllRules()
 }
